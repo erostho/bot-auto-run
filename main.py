@@ -35,8 +35,8 @@ def connect_sheet(sheet_name, worksheet_name):
 
     creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
     client = gspread.authorize(creds)
-sheet = client.open("OKX_GRID_ASSIST").worksheet("DATA")  # hoặc sheet bạn cần
-rows = sheet.get_all_records()
+    sheet = client.open("OKX_GRID_ASSIST").worksheet("DATA")  # hoặc sheet bạn cần
+    rows = sheet.get_all_records()
     sheet = client.open(sheet_name)
     try:
         worksheet = sheet.worksheet(worksheet_name)
