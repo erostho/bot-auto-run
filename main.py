@@ -10,15 +10,14 @@ import numpy as np
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from gspread_dataframe import set_with_dataframe
-
+from google.colab import drive
+drive.mount('/content/drive')
 # ======================================
 # 2. KẾT NỐI GOOGLE SHEET
 # ======================================
 def connect_sheet(sheet_name, worksheet_name):
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    import os, json
-    creds_dict = json.loads(os.environ["GOOGLE_CREDENTIALS"])
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_name("/content/drive/MyDrive/SpotBot/credentials.json", scope)
     client = gspread.authorize(creds)
     sheet = client.open(sheet_name)
     try:
@@ -159,9 +158,7 @@ def run_full_analysis():
 
     # KẾT NỐI SHEET
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    import os, json
-    creds_dict = json.loads(os.environ["GOOGLE_CREDENTIALS"])
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_name("/content/drive/MyDrive/SpotBot/credentials.json", scope)
     client = gspread.authorize(creds)
     sheet = client.open(sheet_name)
 
