@@ -94,7 +94,7 @@ def analyze_multiframe(symbol, df_1h, df_4h, df_1d, df_1w):
     if used_frames == 0:
         return "Không rõ", "", ""
     if total_score >= 6 and strong_up >= 2:
-        return "Tăng mạnh",⭐️⭐️⭐️⭐️⭐️", "LONG"
+        return "Tăng mạnh","⭐️⭐️⭐️⭐️⭐️", "LONG"
     elif total_score >= 4 and strong_up >= 1:
         return "Tăng nhẹ", "⭐️⭐️⭐️", "LONG"
     elif total_score <= -6 and strong_down >= 2:
