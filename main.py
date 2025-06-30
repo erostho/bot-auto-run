@@ -124,7 +124,8 @@ def analyze_intraday(symbol, df_1h, df_4h):
 def run_full_analysis():
     sheet_name = "OKX_GRID_ASSIST"
     symbols = get_okx_symbols()
-    now = datetime.utcnow() + timedelta(hours=7)
+    import pytz
+    now = datetime.now(pytz.utc).astimezone(pytz.timezone('Asia/Ho_Chi_Minh'))
     now_str = now.strftime("%d/%m %H:%M")
     today_str = now.strftime("%Y-%m-%d")
 
