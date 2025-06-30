@@ -94,13 +94,13 @@ def analyze_multiframe(symbol, df_1h, df_4h, df_1d, df_1w):
     if used_frames == 0:
         return "Không rõ", "", ""
     if total_score >= 6 and strong_up >= 2:
-        return "Tăng mạnh","⭐️⭐️⭐️⭐️⭐️", "LONG"
+        return "Tăng mạnh","5*", "LONG"
     elif total_score >= 4 and strong_up >= 1:
-        return "Tăng nhẹ", "⭐️⭐️⭐️", "LONG"
+        return "Tăng nhẹ", "3*", "LONG"
     elif total_score <= -6 and strong_down >= 2:
-        return "Giảm mạnh", "⭐️⭐️⭐️⭐️⭐️", "SHORT"
+        return "Giảm mạnh", "5*", "SHORT"
     elif total_score <= -4 and strong_down >= 1:
-        return "Giảm nhẹ", "⭐️⭐️⭐️", "SHORT"
+        return "Giảm nhẹ", "3*", "SHORT"
     else:
         return "Không rõ", "", ""
 
@@ -111,13 +111,13 @@ def analyze_intraday(symbol, df_1h, df_4h):
     scores = [analyze_single_timeframe(df_1h), analyze_single_timeframe(df_4h)]
     total = sum(scores)
     if total >= 3:
-        return "Tăng mạnh", "⭐⭐⭐⭐⭐", "LONG"
+        return "Tăng mạnh", "5*", "LONG"
     elif total == 2:
-        return "Tăng nhẹ", "⭐⭐⭐", "LONG"
+        return "Tăng nhẹ", "3*", "LONG"
     elif total <= -3:
-        return "Giảm mạnh", "⭐⭐⭐⭐⭐", "SHORT"
+        return "Giảm mạnh", "5*", "SHORT"
     elif total == -2:
-        return "Giảm nhẹ", "⭐⭐⭐", "SHORT"
+        return "Giảm nhẹ", "3*", "SHORT"
     else:
         return "Không rõ", "", ""
 
