@@ -14,9 +14,29 @@ from gspread_dataframe import set_with_dataframe
 # 2. KẾT NỐI GOOGLE SHEET
 # ======================================
 def connect_sheet(sheet_name, worksheet_name):
+    from oauth2client.service_account import ServiceAccountCredentials
+    import gspread
+
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+
+    credentials_dict = {
+      "type": "service_account",
+      "project_id": "spotbot-464009",
+      "private_key_id": "5c5a1d20ba11e073b898c0dd0a9ad99e778a44db",
+      "private_key": "-----BEGIN PRIVATE KEY-----\\nMIIEvQIBADANBgkq... (giữ nguyên) ...\\n-----END PRIVATE KEY-----\\n",
+      "client_email": "spot-writer@spotbot-464009.iam.gserviceaccount.com",
+      "client_id": "100938528578732711209",
+      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+      "token_uri": "https://oauth2.googleapis.com/token",
+      "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+      "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/spot-writer%40spotbot-464009.iam.gserviceaccount.com",
+      "universe_domain": "googleapis.com"
+    }
+
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
     client = gspread.authorize(creds)
+sheet = client.open("OKX_GRID_ASSIST").worksheet("DATA")  # hoặc sheet bạn cần
+rows = sheet.get_all_records()
     sheet = client.open(sheet_name)
     try:
         worksheet = sheet.worksheet(worksheet_name)
@@ -157,7 +177,22 @@ def run_full_analysis():
 
     # KẾT NỐI SHEET
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+
+    credentials_dict = {
+      "type": "service_account",
+      "project_id": "spotbot-464009",
+      "private_key_id": "5c5a1d20ba11e073b898c0dd0a9ad99e778a44db",
+      "private_key": "-----BEGIN PRIVATE KEY-----\\nMIIEvQIBADANBgkq... (giữ nguyên) ...\\n-----END PRIVATE KEY-----\\n",
+      "client_email": "spot-writer@spotbot-464009.iam.gserviceaccount.com",
+      "client_id": "100938528578732711209",
+      "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+      "token_uri": "https://oauth2.googleapis.com/token",
+      "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+      "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/spot-writer%40spotbot-464009.iam.gserviceaccount.com",
+      "universe_domain": "googleapis.com"
+    }
+
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials_dict, scope)
     client = gspread.authorize(creds)
     sheet = client.open(sheet_name)
 
