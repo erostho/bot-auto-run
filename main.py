@@ -72,7 +72,7 @@ for i, row in df.iterrows():
             print(f"⚠️ Lỗi thời gian cho {coin}, bỏ qua")
             continue
 
-        symbol_spot = f"{coin.upper()}/USDT"
+        symbol_spot = f"{coin.upper()}"
         market = exchange.markets.get(symbol_spot)
         if not market or market.get("spot") != True:
             print(f"⚠️ {symbol_spot} không tồn tại trên OKX SPOT")
