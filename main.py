@@ -72,9 +72,10 @@ for i, row in df.iterrows():
             print(f"⚠️ Lỗi thời gian cho {coin}, bỏ qua")
             continue
 
-        symbol = f"{coin.upper()}/USDT"
-        if symbol not in exchange.markets:
-            print(f"⚠️ {symbol} không tồn tại trên OKX")
+        symbol_spot = f"{coin.upper()}/USDT"
+        market = exchange.markets.get(symbol_spot)
+        if not market or market.get("spot") != True:
+            print(f"⚠️ {symbol_spot} không tồn tại trên OKX SPOT")
             continue
 
         # ✅ Check tín hiệu từ TradingView
