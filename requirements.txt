@@ -1,4 +1,4 @@
+ccxt
 gspread
 oauth2client
-pandas
-gspread_dataframe
+tradingview_ta
