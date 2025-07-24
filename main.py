@@ -51,7 +51,7 @@ def run_bot():
     logging.info("🤖 Bắt đầu chạy bot SPOT OKX...")
     now = datetime.utcnow()
     rows = fetch_sheet()
-
+    
     if not rows:
         logging.warning("⚠️ Không có dữ liệu từ Google Sheet.")
         return
@@ -80,8 +80,9 @@ def run_bot():
                 logging.info(f"✅ {coin} đã mua trước đó → bỏ qua")
                 continue
             logging.info(f"🛒 Đang xét mua {coin}...")
+            
             # Tín hiệu TV
-            signal_tv = check_tradingview_signal(symbol_tv)
+            signal_tv = check_tradingview_signal(symbol)
             if signal_tv not in ["BUY", "STRONG_BUY"]:
                 logging.info(f"❌ {symbol} bị loại do tín hiệu TV = {signal_tv}")
                 continue
