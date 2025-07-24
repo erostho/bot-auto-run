@@ -300,9 +300,15 @@ def run_bot():
         except Exception as e:
             logger.error(f"❌ Lỗi khi xử lý dòng {i} - {row}: {e}")
 # Gọi thread auto bán sau run_bot
+import threading
+
 if __name__ == "__main__":
+    logger.info("🚀 Khởi động bot SPOT OKX")
+    
+    # Gọi hàm auto_sell_watcher trong thread riêng
     threading.Thread(target=auto_sell_watcher, daemon=True).start()
-    logging.info("✅ Đã tạo thread auto_sell_watcher")
+
+    # Gọi bot mua SPOT như bình thường
     run_bot()
     # ✅ Giữ chương trình sống (để thread không bị kill)
     while True:
