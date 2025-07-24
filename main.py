@@ -165,7 +165,11 @@ def run_bot():
                     logger.info(f"💰 [TĂNG] Mua {amount} {symbol} với {usdt_amount} USDT (giá {price})")
                     order = exchange.create_market_buy_order(symbol, amount)
                     logger.info(f"✅ Đã mua {symbol} theo TĂNG: {order}")
-                    spot_entry_prices[symbol] = price
+                    # Giả sử sau khi vào lệnh mua thành công:
+                    spot_entry_prices[symbol] = {
+                        "price": price,
+                        "timestamp": datetime.utcnow().isoformat() + "Z"
+                    }
                     save_entry_prices(spot_entry_prices)
                     continue  # Đã mua rồi thì bỏ qua phần dưới
                 except Exception as e:
@@ -209,33 +213,20 @@ def run_bot():
                     logger.info(f"💰 [SIDEWAY] Mua {amount} {symbol} với {usdt_amount} USDT (giá {price})")
                     order = exchange.create_market_buy_order(symbol, amount)
                     logger.info(f"✅ Đã mua {symbol} theo SIDEWAY: {order}")
-                    spot_entry_prices[symbol] = price
+                    # Giả sử sau khi vào lệnh mua thành công:
+                    spot_entry_prices[symbol] = {
+                        "price": price,
+                        "timestamp": datetime.utcnow().isoformat() + "Z"
+                    }
                     save_entry_prices(spot_entry_prices)
                 except Exception as e:
                     logger.error(f"❌ Lỗi khi mua {symbol} theo SIDEWAY: {e}")
         except Exception as e:
             logger.error(f"❌ Lỗi khi xử lý dòng {i} - {row}: {e}")
-
 if __name__ == "__main__":
     run_bot()
 
 spot_entry_prices_path = "spot_entry_prices.json"
-# Tải lại giá mua từ file nếu có
-def load_entry_prices():
-    try:
-        with open(spot_entry_prices_path, "r") as f:
-            data = json.load(f)
-            logger.debug(f"📂 Giá mua load từ file: {data}")
-            return json.load(f)
-    except Exception as e:
-        logger.warning(f"⚠️ Lỗi khi load spot_entry_prices.json: {e}")
-        return {}
-
-# Lưu lại sau khi bán xong
-def save_entry_prices(data):
-    with open(spot_entry_prices_path, "w") as f:
-        json.dump(data, f)
-
 def auto_sell_watcher():
     global spot_entry_prices
     spot_entry_prices = load_entry_prices()
@@ -250,57 +241,55 @@ def auto_sell_watcher():
 
             for coin, balance_data in balances.items():
                 try:
-                    for coin, balance_data in balances.items():
-                        if not isinstance(balance_data, dict):
-                            logger.warning(f"⚠️ {coin} không phải dict: {balance_data}")
-                            continue
-                        balance = balance_data.get("total", 0)
+                    if not isinstance(balance_data, dict):
+                        logger.warning(f"⚠️ {coin} không phải dict: {balance_data}")
+                        continue
+
+                    balance = balance_data.get("total", 0)
                     if not balance or balance <= 0:
                         continue
 
-                    # Tìm symbol tương ứng
-                    logger.debug(f"🧾 [AUTO SELL] Xét coin: {coin} | Số dư: {balance}")
+                    logger.debug(f"🧮 [AUTO SELL] Xét coin: {coin} | Số dư: {balance}")
                     symbol = f"{coin}-USDT"
                     if symbol not in tickers:
                         continue
 
                     current_price = tickers[symbol]['last']
 
-                    # Phải có giá mua hợp lệ
-                    entry_str = spot_entry_prices.get(symbol)
-                    logger.debug(f"📦 [DEBUG] entry_str cho {symbol}: {entry_str} ({type(entry_str)})")
+                    # Lấy entry từ dict giá mua
+                    entry_data = spot_entry_prices.get(symbol)
+                    logger.debug(f"📦 [DEBUG] entry_str cho {symbol}: {entry_data} ({type(entry_data)})")
+
+                    if not entry_data:
+                        logger.warning(f"⚠️ Không có giá mua cho {symbol}")
+                        continue
+
+                    if isinstance(entry_data, dict):
+                        entry_price = entry_data.get("price")
+                        logger.debug(f"📦 [DEBUG] Đã lấy giá từ dict cho {symbol}: {entry_price}")
+                    else:
+                        entry_price = entry_data
+
+                    if not isinstance(entry_price, (int, float, str)):
+                        logger.warning(f"⚠️ entry_str cho {symbol} không hợp lệ: {entry_price}")
+                        continue
+
                     try:
-                        if not entry_str:
-                            logger.warning(f"⚠️ Không có giá mua cho {symbol}")
-                            continue
-                        
-                        # Nếu entry_str là dict (cũ), lấy ra giá
-                        if isinstance(entry_str, dict):
-                            entry_str = entry_str.get("price")
-                            logger.debug(f"📦 [DEBUG] Đã lấy giá từ dict cho {symbol}: {entry_str}")
-                        
-                        if not isinstance(entry_str, (int, float, str)):
-                            logger.warning(f"⚠️ entry_str cho {symbol} không hợp lệ: {entry_str}")
-                            continue
-                        
-                        try:
-                            entry_price = float(entry_str)
-                            logger.debug(f"📊 {symbol}: Giá mua = {entry_price}, Giá hiện tại = {current_price}, Target = {entry_price * 1.1}")
-                        except ValueError:
-                            logger.warning(f"⚠️ Không thể convert giá mua {entry_str} thành float cho {symbol}")
-                            continue
-                    except Exception:
-                        logger.warning(f"⚠️ Giá mua không hợp lệ cho {symbol}: '{entry_str}'")
+                        entry_price = float(entry_price)
+                    except ValueError:
+                        logger.warning(f"⚠️ Không thể convert giá mua {entry_price} thành float cho {symbol}")
                         continue
 
                     target_price = entry_price * 1.1
+
                     if current_price >= target_price:
                         logger.info(f"🚀 BÁN {symbol}: giá hiện tại {current_price} > {target_price} (entry {entry_price})")
                         order = exchange.create_market_sell_order(symbol, balance)
                         logger.info(f"✅ Đã bán {symbol}: {order}")
-                        updated_prices.pop(symbol, None)  # Xoá sau khi đã bán
+                        updated_prices.pop(symbol, None)
                     else:
                         logger.debug(f"⏳ {symbol} chưa đủ lời: {current_price} < {target_price}")
+
                 except Exception as e:
                     logger.warning(f"⚠️ Lỗi khi xử lý {coin}: {e}")
 
@@ -311,7 +300,6 @@ def auto_sell_watcher():
             logger.error(f"❌ Lỗi AUTO SELL: {e}")
 
         time.sleep(180)
-
 
 # Gọi thread auto bán sau run_bot
 if __name__ == "__main__":
