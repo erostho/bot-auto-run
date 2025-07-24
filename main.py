@@ -45,6 +45,7 @@ def fetch_sheet():
         return []
 
 spot_entry_prices_path = "spot_entry_prices.json"
+
 def auto_sell_watcher():
     global spot_entry_prices
     spot_entry_prices = load_entry_prices()
@@ -301,9 +302,9 @@ def run_bot():
 # Gọi thread auto bán sau run_bot
 if __name__ == "__main__":
     threading.Thread(target=auto_sell_watcher, daemon=True).start()
+    logging.info("✅ Đã tạo thread auto_sell_watcher")
     run_bot()
     # ✅ Giữ chương trình sống (để thread không bị kill)
     while True:
         time.sleep(60)
-
 
