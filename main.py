@@ -145,19 +145,7 @@ for i, row in df.iterrows():
         if price > gia_mua * 1.05:
             print(f"⚠️ Giá {symbol} cao hơn 5% so với giá mua gốc → KHÔNG MUA")
             continue
-        
-        # Tín hiệu TradingView
-        try:
-            signal_tv = check_tradingview_signal(symbol.replace("/", ""))
-            print(f"[TV] Tín hiệu TradingView của {symbol}: {signal_tv}")
-        except Exception as e:
-            print(f"❌ Lỗi lấy tín hiệu TradingView: {e}")
-            continue
-        
-        if signal_tv not in ["BUY", "STRONG_BUY"]:
-            print(f"🚫 {symbol} bị loại do tín hiệu TV = {signal_tv}")
-            continue
-        
+                
         # Tính amount và đặt lệnh
         usdt_amount = 10
         amount = round(usdt_amount / price, 6)
