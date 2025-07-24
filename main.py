@@ -34,15 +34,19 @@ def fetch_sheet():
 # ✅ Lấy tín hiệu tradingview
 def check_tradingview_signal(symbol: str) -> str:
     try:
+        symbol_tv = symbol.replace("-", "").upper()
         url = "https://scanner.tradingview.com/crypto/scan"
         payload = {
-            "symbols": {"tickers": [f"BINANCE:{symbol}"], "query": {"types": []}},
+            "symbols": {"tickers": [f"OKX:{symbol_tv}"]},  # ⚠ đổi từ BINANCE sang OKX
             "columns": ["recommendation"]
         }
-        res = requests.post(url, json=payload)
+        logging.debug(f"📡 Payload gửi TV: {payload}")
+        res = requests.post(url, json=payload, timeout=5)
         res.raise_for_status()
-        signal = res.json()['data'][0]['d'][0]
-        return signal
+        data = res.json()
+        if not data.get("data"):
+            return None
+        return data["data"][0]["d"][0]
     except Exception as e:
         logging.warning(f"⚠️ Lỗi lấy tín hiệu TV cho {symbol}: {e}")
         return None
