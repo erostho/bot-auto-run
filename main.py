@@ -145,28 +145,30 @@ for i, row in df.iterrows():
         buy_status = str(row.get("Đã mua", "")).strip().upper()
         sell_status = str(row.get("Giá Bán", "")).strip()
 
-        if not coin or buy_status != "RỒI" or not gia_mua:
+        if not coin or buy_status != "RỜI" or not gia_mua:
             continue
 
         symbol = f"{coin.upper()}/USDT"
         if symbol not in exchange.markets:
             continue
 
+        # Lấy giá hiện tại
         current_price = exchange.fetch_ticker(symbol)['last']
         if current_price < gia_mua * 1.1:
-            continue
+            continue  # Chưa đạt target bán
 
+        # Lấy số dư
         balance = exchange.fetch_balance()
         coin_code = coin.upper()
         amount = balance.get(coin_code, {}).get("free", 0)
         if amount <= 0:
             continue
 
+        # Tạo lệnh bán
         order = exchange.create_market_sell_order(symbol, amount)
-        print(f"💰 Đã BÁN {symbol} {amount:.6f} giá ~{current_price:.4f}")
+        print(f"🍑 ĐÃ BÁN {symbol} {amount:.6f} giá ~{current_price:.4f}")
 
     except Exception as e:
         print(f"⚠️ Lỗi bán {coin}: {e}")
-        continue
 
 print("✅ Bot SPOT OKX hoàn tất.")
