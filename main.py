@@ -66,7 +66,8 @@ def run_bot():
             if not row or len(row) < 2:
                 logging.warning(f"⚠️ Dòng {i} không hợp lệ: {row}")
                 continue
-
+            symbol = row[0].strip().upper()  # <-- Phải có dòng này trước khi dùng `symbol`
+            logging.info(f"💰 Đang xét mua {symbol}...")
             coin = (row[0] or "").strip().upper()
             signal = (row[1] or "").strip().upper()
             gia_hien_tai = row[2] if len(row) > 2 else ""
