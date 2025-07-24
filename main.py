@@ -37,16 +37,24 @@ def check_tradingview_signal(symbol: str) -> str:
         symbol_tv = symbol.replace("-", "").upper()
         url = "https://scanner.tradingview.com/crypto/scan"
         payload = {
-            "symbols": {"tickers": [f"OKX:{symbol_tv}"]},  # ⚠ đổi từ BINANCE sang OKX
+            "symbols": {"tickers": [f"OKX:{symbol_tv}"]},
             "columns": ["recommendation"]
         }
-        logging.debug(f"📡 Payload gửi TV: {payload}")
+
+        # 🐛 Log chi tiết để kiểm tra payload trước khi gửi
+        logging.debug(f"📡 [DEBUG] Gửi tín hiệu TV cho {symbol} với payload: {payload}")
+
         res = requests.post(url, json=payload, timeout=5)
         res.raise_for_status()
+
         data = res.json()
+        logging.debug(f"📥 [DEBUG] Phản hồi từ TradingView: {data}")
+
         if not data.get("data"):
             return None
+
         return data["data"][0]["d"][0]
+    
     except Exception as e:
         logging.warning(f"⚠️ Lỗi lấy tín hiệu TV cho {symbol}: {e}")
         return None
