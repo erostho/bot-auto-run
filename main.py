@@ -6,23 +6,23 @@ from datetime import datetime
 import ccxt
 
 # Cấu hình logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s:%(name)s: %(message)s")
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s:%(name)s: %(message)s")
 logger = logging.getLogger()
 
-# Lấy biến môi trường
-API_KEY = os.getenv("OKX_API_KEY")
-API_SECRET = os.getenv("OKX_API_SECRET")
-API_PASS = os.getenv("OKX_API_PASS")
-SHEET_URL = os.getenv("GOOGLE_SHEET_PUBLIC_CSV")  # link CSV của sheet public
+# Đọc biến môi trường
+SPREADSHEET_URL = os.environ.get("SPREADSHEET_URL")
+OKX_API_KEY = os.environ.get("OKX_API_KEY")
+OKX_API_SECRET = os.environ.get("OKX_API_SECRET")
+OKX_API_PASSPHRASE = os.environ.get("OKX_API_PASSPHRASE")
 
-# Kết nối OKX
+# Khởi tạo OKX
 exchange = ccxt.okx({
-    "apiKey": API_KEY,
-    "secret": API_SECRET,
-    "password": API_PASS,
-    "enableRateLimit": True,
-    "options": {
-        "defaultType": "spot"
+    'apiKey': OKX_API_KEY,
+    'secret': OKX_API_SECRET,
+    'password': OKX_API_PASSPHRASE,
+    'enableRateLimit': True,
+    'options': {
+        'defaultType': 'spot'
     }
 })
 
