@@ -1,1 +1,1 @@
-# bot-auto-run
+# bot-auto-spot OKX
