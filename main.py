@@ -46,7 +46,7 @@ def fetch_sheet():
 
 def get_short_term_trend(symbol):
     score = 0
-    timeframes = ["1h", "4h", "1d", "1w"]
+    timeframes = ["1h", "4h", "1d"]
 
     for tf in timeframes:
         try:
@@ -127,15 +127,7 @@ def run_bot():
                         continue
                 except Exception as e:
                     logger.warning(f"⚠️ Không thể kiểm tra tần suất cho {symbol}: {e}")
-
-            # ✅ Phân tích xu hướng ngắn hạn thay cho TradingView
-            trend = get_short_term_trend(symbol)
-            logger.info(f"📈 Xu hướng ngắn hạn của {symbol} = {trend}")
-
-            if trend not in ["TĂNG", "SIDEWAY"]:
-                logger.info(f"❌ Bỏ qua {symbol} vì xu hướng ngắn hạn = {trend}")
-                continue
-
+            
             # ✅ Kiểm tra nếu đã có coin trong ví Spot
             coin_name = symbol.split("-")[0]
             balances = exchange.fetch_balance()
@@ -145,17 +137,59 @@ def run_bot():
                 logger.info(f"❌ Bỏ qua {symbol} vì đã có {asset_balance} {coin_name} trong ví")
                 continue
 
-            # ✅ Nếu tới đây thì đủ điều kiện mua SPOT
-            try:
-                usdt_amount = 10
-                price = exchange.fetch_ticker(symbol)['last']
-                amount = round(usdt_amount / price, 6)
-
-                logger.info(f"💰 Đặt lệnh mua {amount} {symbol} với tổng {usdt_amount} USDT (giá {price})")
-                order = exchange.create_market_buy_order(symbol, amount)
-                logger.info(f"✅ Đã mua {symbol}: {order}")
-            except Exception as e:
-                logger.error(f"❌ Lỗi khi mua {symbol}: {e}")
+            # ✅ Phân tích xu hướng ngắn hạn thay cho TradingView
+            trend = get_short_term_trend(symbol)
+            logger.info(f"📉 Xu hướng ngắn hạn của {symbol} = {trend}")
+            
+            # ✅ Nếu trend là TĂNG → mua ngay (logic cũ)
+            if trend == "TĂNG":
+                try:
+                    usdt_amount = 10
+                    price = exchange.fetch_ticker(symbol)['last']
+                    amount = round(usdt_amount / price, 6)
+            
+                    logger.info(f"💰 [TĂNG] Mua {amount} {symbol} với {usdt_amount} USDT (giá {price})")
+                    order = exchange.create_market_buy_order(symbol, amount)
+                    logger.info(f"✅ Đã mua {symbol} theo TĂNG: {order}")
+                    spot_entry_prices[symbol] = price
+                    save_entry_prices(spot_entry_prices)
+                    continue  # Đã mua rồi thì bỏ qua phần dưới
+                except Exception as e:
+                    logger.error(f"❌ Lỗi khi mua {symbol} theo trend TĂNG: {e}")
+                    continue
+            
+            # ✅ Nếu trend là SIDEWAY → kiểm tra thêm RSI và Volume
+            if trend == "SIDEWAY":
+                try:
+                    ohlcv = exchange.fetch_ohlcv(symbol, timeframe="1h", limit=30)
+                    closes = [c[4] for c in ohlcv]
+                    volumes = [c[5] for c in ohlcv]
+                    if len(closes) < 20:
+                        logger.warning(f"⚠️ Không đủ dữ liệu nến cho {symbol}")
+                        continue
+            
+                    rsi = compute_rsi(closes, period=14)
+                    vol = volumes[-1]
+                    vol_sma20 = sum(volumes[-20:]) / 20
+            
+                    logger.debug(f"📊 {symbol}: RSI = {rsi}, Volume = {vol}, SMA20 = {vol_sma20}")
+            
+                    if rsi >= 45 or vol >= vol_sma20:
+                        logger.info(f"⛔ {symbol} bị loại (SIDEWAY nhưng không nén đủ mạnh)")
+                        continue
+            
+                    # ✅ Mua nếu đủ điều kiện SIDEWAY tích luỹ
+                    usdt_amount = 10
+                    price = exchange.fetch_ticker(symbol)['last']
+                    amount = round(usdt_amount / price, 6)
+            
+                    logger.info(f"💰 [SIDEWAY] Mua {amount} {symbol} với {usdt_amount} USDT (giá {price})")
+                    order = exchange.create_market_buy_order(symbol, amount)
+                    logger.info(f"✅ Đã mua {symbol} theo SIDEWAY: {order}")
+                    spot_entry_prices[symbol] = price
+                    save_entry_prices(spot_entry_prices)
+                except Exception as e:
+                    logger.error(f"❌ Lỗi khi mua {symbol} theo SIDEWAY: {e}")
         except Exception as e:
             logger.error(f"❌ Lỗi khi xử lý dòng {i} - {row}: {e}")
 
