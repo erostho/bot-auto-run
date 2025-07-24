@@ -62,7 +62,7 @@ def get_short_term_trend(symbol):
             logger.warning(f"⚠️ Không thể fetch nến {tf} cho {symbol}: {e}")
             continue
 
-    if score >= 4:
+    if score >= 3:
         return "TĂNG"
     elif score <= 1:
         return "GIẢM"
@@ -114,7 +114,7 @@ def run_bot():
                 try:
                     freq_minutes = int(row[4].strip())
                     time_str = row[3].strip()
-                    signal_time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
+                    signal_time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone(timedelta(hours=7)))
                     now_vn = datetime.now(timezone(timedelta(hours=7)))
                     elapsed = (now_vn - signal_time).total_seconds() / 60
                     if elapsed > freq_minutes:
