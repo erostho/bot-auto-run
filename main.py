@@ -31,45 +31,7 @@ def fetch_sheet():
     except Exception as e:
         logging.error(f"❌ Không thể tải Google Sheet: {e}")
         return []
-# ✅ Lấy tín hiệu tradingview
-def check_tradingview_signal(symbol: str) -> str:
-    try:
-        # 🔁 Chuẩn hóa symbol: DAI-USDT → DAI/USDT
-        symbol_tv = symbol.replace("-", "/").upper()
 
-        url = "https://scanner.tradingview.com/crypto/scan"
-        payload = {
-            "symbols": {
-                "tickers": [f"OKX:{symbol_tv}"]
-            },
-            "columns": ["recommendation"]
-        }
-
-        # 🐛 DEBUG trước khi gửi request
-        logging.debug(f"[DEBUG] 🔍 Gửi yêu cầu TV cho {symbol} (→ {symbol_tv}) với payload: {payload}")
-
-        res = requests.post(url, json=payload, timeout=5)
-        res.raise_for_status()
-
-        data = res.json()
-        logging.debug(f"[DEBUG] 📥 Phản hồi từ TradingView: {data}")
-
-        # ✅ So sánh symbol gửi và symbol trả về
-        returned_symbols = data.get("symbols", [])
-        logging.debug(f"[DEBUG] 🔁 Đối chiếu symbol gửi: OKX:{symbol_tv} ↔ symbols trả về: {returned_symbols}")
-
-        if not data.get("data") or not data["data"][0].get("d"):
-            logging.warning(f"[⚠️] Không có dữ liệu tín hiệu TV cho {symbol_tv}")
-            return None
-
-        return data["data"][0]["d"][0]
-
-    except requests.exceptions.RequestException as e:
-        logging.warning(f"⚠️ Lỗi khi gửi yêu cầu TV cho {symbol}: {e}")
-        return None
-    except Exception as e:
-        logging.warning(f"⚠️ Lỗi xử lý tín hiệu TV cho {symbol}: {e}")
-        return None
 # ✅ Hàm chính
 def run_bot():
     logging.info("🤖 Bắt đầu chạy bot SPOT OKX...")
@@ -107,6 +69,43 @@ def run_bot():
             logging.info(f"🛒 Đang xét mua {coin}...")
             
             # Tín hiệu TV
+                try:
+                    # 🔁 Chuẩn hóa symbol: DAI-USDT → DAI/USDT
+                    symbol_tv = symbol.replace("-", "/").upper()
+            
+                    url = "https://scanner.tradingview.com/crypto/scan"
+                    payload = {
+                        "symbols": {
+                            "tickers": [f"OKX:{symbol_tv}"]
+                        },
+                        "columns": ["recommendation"]
+                    }
+            
+                    # 🐛 DEBUG trước khi gửi request
+                    logging.debug(f"[DEBUG] 🔍 Gửi yêu cầu TV cho {symbol} (→ {symbol_tv}) với payload: {payload}")
+            
+                    res = requests.post(url, json=payload, timeout=5)
+                    res.raise_for_status()
+            
+                    data = res.json()
+                    logging.debug(f"[DEBUG] 📥 Phản hồi từ TradingView: {data}")
+            
+                    # ✅ So sánh symbol gửi và symbol trả về
+                    returned_symbols = data.get("symbols", [])
+                    logging.debug(f"[DEBUG] 🔁 Đối chiếu symbol gửi: OKX:{symbol_tv} ↔ symbols trả về: {returned_symbols}")
+            
+                    if not data.get("data") or not data["data"][0].get("d"):
+                        logging.warning(f"[⚠️] Không có dữ liệu tín hiệu TV cho {symbol_tv}")
+                        return None
+            
+                    return data["data"][0]["d"][0]
+            
+                except requests.exceptions.RequestException as e:
+                    logging.warning(f"⚠️ Lỗi khi gửi yêu cầu TV cho {symbol}: {e}")
+                    return None
+                except Exception as e:
+                    logging.warning(f"⚠️ Lỗi xử lý tín hiệu TV cho {symbol}: {e}")
+                    return None
             signal_tv = check_tradingview_signal(symbol)
             if signal_tv not in ["BUY", "STRONG_BUY"]:
                 logging.info(f"❌ {symbol} bị loại do tín hiệu TV = {signal_tv}")
