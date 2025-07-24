@@ -1,133 +1,116 @@
-
 import os
-import requests
 import csv
+import requests
 import logging
 from datetime import datetime
 import ccxt
 
-logging.basicConfig(level=logging.INFO)
+# Cấu hình logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s:%(name)s: %(message)s")
+logger = logging.getLogger()
 
-# ✅ Cấu hình OKX
+# Lấy biến môi trường
+API_KEY = os.getenv("OKX_API_KEY")
+API_SECRET = os.getenv("OKX_API_SECRET")
+API_PASS = os.getenv("OKX_API_PASS")
+SHEET_URL = os.getenv("GOOGLE_SHEET_PUBLIC_CSV")  # link CSV của sheet public
+
+# Kết nối OKX
 exchange = ccxt.okx({
-    "apiKey": os.getenv("OKX_API_KEY"),
-    "secret": os.getenv("OKX_API_SECRET"),
-    "password": os.getenv("OKX_API_PASSPHRASE"),
+    "apiKey": API_KEY,
+    "secret": API_SECRET,
+    "password": API_PASS,
     "enableRateLimit": True,
-    "options": {"defaultType": "spot"},
+    "options": {
+        "defaultType": "spot"
+    }
 })
 
-# ✅ Đọc Google Sheet
+
 def fetch_sheet():
     try:
-        sheet_url = os.getenv("SPREADSHEET_URL")
-        if sheet_url is None:
-            logging.error("❌ SPREADSHEET_URL không được thiết lập trong biến môi trường")
-            return []
-        csv_url = sheet_url.replace("/edit#gid=", "/export?format=csv&gid=")
-        res = requests.get(csv_url)
-        res.raise_for_status()
-        return list(csv.reader(res.content.decode("utf-8").splitlines()))
+        response = requests.get(SHEET_URL)
+        response.raise_for_status()
+        decoded = response.content.decode('utf-8')
+        reader = csv.reader(decoded.splitlines())
+        return list(reader)[1:]  # bỏ dòng tiêu đề
     except Exception as e:
-        logging.error(f"❌ Không thể tải Google Sheet: {e}")
+        logger.error(f"❌ Lỗi khi đọc Google Sheet: {e}")
         return []
 
-# ✅ Hàm chính
-def run_bot():
-    logging.info("🤖 Bắt đầu chạy bot SPOT OKX...")
-    now = datetime.utcnow()
-    rows = fetch_sheet()
-    
-    if not rows:
-        logging.warning("⚠️ Không có dữ liệu từ Google Sheet.")
-        return
 
-    header = rows[0]
-    logging.info(f"📌 Header: {header}")
-    rows = rows[1:]
+def run_bot():
+    rows = fetch_sheet()
 
     for i, row in enumerate(rows):
         try:
-            logging.debug(f"🧪 Đang xử lý dòng {i}: {row}")
+            logger.debug(f"🔍 Đang xử lý dòng {i}: {row}")
             if not row or len(row) < 2:
-                logging.warning(f"⚠️ Dòng {i} không hợp lệ: {row}")
+                logger.warning(f"⚠️ Dòng {i} không hợp lệ: {row}")
                 continue
-            symbol = row[0].strip().upper()  # <-- Phải có dòng này trước khi dùng `symbol`
-            logging.info(f"💰 Đang xét mua {symbol}...")
-            coin = (row[0] or "").strip().upper()
-            signal = (row[1] or "").strip().upper()
-            gia_hien_tai = row[2] if len(row) > 2 else ""
-            da_mua = (row[5] or "").strip().upper() if len(row) > 5 else ""
 
+            symbol = row[0].strip().upper()        # ví dụ: DOGE-USDT
+            signal = row[1].strip().upper()        # ví dụ: MUA MẠNH
+            gia_mua = float(row[2]) if len(row) > 2 and row[2] else None
+            ngay = row[3].strip() if len(row) > 3 else ""
+            da_mua = row[5].strip().upper() if len(row) > 5 else ""
+
+            coin = symbol.replace("-USDT", "")
+            logger.info(f"🛒 Đang xét mua {symbol}...")
+
+            # Bỏ qua nếu chưa có giá mua hoặc đã mua rồi
+            if not gia_mua or da_mua == "ĐÃ MUA":
+                logger.info(f"⏩ Bỏ qua {symbol} do {'đã mua' if da_mua == 'ĐÃ MUA' else 'thiếu giá'}")
+                continue
+
+            # Kiểm tra tín hiệu sheet
             if signal != "MUA MẠNH":
-                logging.info(f"⛔ {coin} bị loại do tín hiệu = {signal}")
+                logger.info(f"❌ {symbol} bị loại do tín hiệu Sheet = {signal}")
                 continue
 
-            if da_mua == "ĐÃ MUA":
-                logging.info(f"✅ {coin} đã mua trước đó → bỏ qua")
-                continue
-            logging.info(f"🛒 Đang xét mua {coin}...")
-            
-            # Tín hiệu TV
-                try:
-                    # 🔁 Chuẩn hóa symbol: DAI-USDT → DAI/USDT
-                    symbol_tv = symbol.replace("-", "/").upper()
-            
-                    url = "https://scanner.tradingview.com/crypto/scan"
-                    payload = {
-                        "symbols": {
-                            "tickers": [f"OKX:{symbol_tv}"]
-                        },
-                        "columns": ["recommendation"]
-                    }
-            
-                    # 🐛 DEBUG trước khi gửi request
-                    logging.debug(f"[DEBUG] 🔍 Gửi yêu cầu TV cho {symbol} (→ {symbol_tv}) với payload: {payload}")
-            
-                    res = requests.post(url, json=payload, timeout=5)
-                    res.raise_for_status()
-            
-                    data = res.json()
-                    logging.debug(f"[DEBUG] 📥 Phản hồi từ TradingView: {data}")
-            
-                    # ✅ So sánh symbol gửi và symbol trả về
-                    returned_symbols = data.get("symbols", [])
-                    logging.debug(f"[DEBUG] 🔁 Đối chiếu symbol gửi: OKX:{symbol_tv} ↔ symbols trả về: {returned_symbols}")
-            
-                    if not data.get("data") or not data["data"][0].get("d"):
-                        logging.warning(f"[⚠️] Không có dữ liệu tín hiệu TV cho {symbol_tv}")
-                        return None
-            
-                    return data["data"][0]["d"][0]
-            
-                except requests.exceptions.RequestException as e:
-                    logging.warning(f"⚠️ Lỗi khi gửi yêu cầu TV cho {symbol}: {e}")
-                    return None
-                except Exception as e:
-                    logging.warning(f"⚠️ Lỗi xử lý tín hiệu TV cho {symbol}: {e}")
-                    return None
-            signal_tv = check_tradingview_signal(symbol)
-            if signal_tv not in ["BUY", "STRONG_BUY"]:
-                logging.info(f"❌ {symbol} bị loại do tín hiệu TV = {signal_tv}")
-                continue
-            # Lấy giá thị trường
+            # ✅ Gửi tín hiệu check TradingView trực tiếp
+            symbol_tv = symbol.replace("-", "").upper()
+            url = "https://scanner.tradingview.com/crypto/scan"
+            payload = {
+                "symbols": {"tickers": [f"OKX:{symbol_tv}"], "query": {"types": []}},
+                "columns": ["recommendation"]
+            }
+
+            logger.debug(f"📡 Gửi request TV: {payload}")
             try:
-                ticker = exchange.fetch_ticker(f"{coin}/USDT")
-                last_price = ticker['last']
-                logging.info(f"💰 Giá hiện tại {coin}: {last_price}")
+                res = requests.post(url, json=payload, timeout=5)
+                res.raise_for_status()
+                data = res.json()
+                logger.debug(f"🎯 Phản hồi TV: {data}")
+
+                if not data.get("data") or not data["data"][0]["d"]:
+                    logger.info(f"❌ {symbol} bị loại do không có tín hiệu TV")
+                    continue
+
+                signal_tv = data["data"][0]["d"][0]
+                if signal_tv not in ["BUY", "STRONG_BUY"]:
+                    logger.info(f"❌ {symbol} bị loại do tín hiệu TV = {signal_tv}")
+                    continue
+                logger.info(f"✅ Tín hiệu TV OK: {symbol} = {signal_tv}")
+
             except Exception as e:
-                logging.warning(f"⚠️ Không lấy được giá cho {coin}: {e}")
+                logger.warning(f"⚠️ Lỗi lấy tín hiệu TV cho {symbol}: {e}")
                 continue
 
-            # Đặt lệnh mua 10 USDT
+            # ✅ Mua SPOT
             usdt_amount = 10
-            amount = round(usdt_amount / last_price, 6)
-            logging.info(f"📦 Đặt mua {coin} với số lượng {amount} ({usdt_amount} USDT)")
-            # lệnh giả lập:
-            # order = exchange.create_market_buy_order(f"{coin}/USDT", amount)
+            price = exchange.fetch_ticker(symbol.replace("-", "/"))['last']
+            quantity = round(usdt_amount / price, 6)
+
+            logger.info(f"🟢 Mua {symbol} với khối lượng {quantity} @ {price}")
+            order = exchange.create_market_buy_order(symbol.replace("-", "/"), quantity)
+
+            logger.info(f"✅ Đã mua {symbol}: OrderID = {order['id']}")
 
         except Exception as e:
-            logging.warning(f"⚠️ Lỗi tại dòng {i}: {e}")
+            logger.warning(f"❌ Lỗi dòng {i}: {e}")
+
 
 if __name__ == "__main__":
+    logger.info("🚀 Bắt đầu chạy bot SPOT OKX...")
     run_bot()
