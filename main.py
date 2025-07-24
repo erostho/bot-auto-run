@@ -1,34 +1,30 @@
 
-import ccxt
-import requests
-import pandas as pd
 import os
-import time
+import requests
 import csv
 import logging
 from datetime import datetime
+import ccxt
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-
-# ✅ Lấy biến môi trường
-SPREADSHEET_URL = os.environ.get("SPREADSHEET_URL")
-OKX_API_KEY = os.environ.get("OKX_API_KEY")
-OKX_API_SECRET = os.environ.get("OKX_API_SECRET")
-OKX_API_PASSPHRASE = os.environ.get("OKX_API_PASSPHRASE")
+logging.basicConfig(level=logging.INFO)
 
 # ✅ Cấu hình OKX
 exchange = ccxt.okx({
-    "apiKey": OKX_API_KEY,
-    "secret": OKX_API_SECRET,
-    "password": OKX_API_PASSPHRASE,
+    "apiKey": os.getenv("OKX_API_KEY"),
+    "secret": os.getenv("OKX_API_SECRET"),
+    "password": os.getenv("OKX_API_PASSPHRASE"),
     "enableRateLimit": True,
     "options": {"defaultType": "spot"},
 })
 
-# ✅ Đọc Google Sheet public
+# ✅ Đọc Google Sheet
 def fetch_sheet():
     try:
-        csv_url = SPREADSHEET_URL.replace("/edit#gid=", "/export?format=csv&gid=")
+        sheet_url = os.getenv("SPREADSHEET_URL")
+        if sheet_url is None:
+            logging.error("❌ SPREADSHEET_URL không được thiết lập trong biến môi trường")
+            return []
+        csv_url = sheet_url.replace("/edit#gid=", "/export?format=csv&gid=")
         res = requests.get(csv_url)
         res.raise_for_status()
         return list(csv.reader(res.content.decode("utf-8").splitlines()))
@@ -36,69 +32,58 @@ def fetch_sheet():
         logging.error(f"❌ Không thể tải Google Sheet: {e}")
         return []
 
-# ✅ Lấy tín hiệu từ TradingView
-def check_tradingview_signal(symbol: str) -> str:
-    try:
-        url = "https://scanner.tradingview.com/crypto/scan"
-        payload = {
-            "symbols": {"tickers": [f"BINANCE:{symbol}"]},
-            "columns": ["recommendation"]
-        }
-        res = requests.post(url, json=payload)
-        res.raise_for_status()
-        signal = res.json()["data"][0]["d"][0]
-        return signal.upper()
-    except Exception as e:
-        logging.warning(f"⚠️ Không lấy được tín hiệu TV cho {symbol}: {e}")
-        return "UNKNOWN"
-
-# ✅ Hàm chính chạy bot
+# ✅ Hàm chính
 def run_bot():
+    logging.info("🤖 Bắt đầu chạy bot SPOT OKX...")
     now = datetime.utcnow()
     rows = fetch_sheet()
+
     if not rows:
-        logging.error("❌ Không có dữ liệu từ Google Sheet")
+        logging.warning("⚠️ Không có dữ liệu từ Google Sheet.")
         return
 
     header = rows[0]
+    logging.info(f"📌 Header: {header}")
     rows = rows[1:]
+
     for i, row in enumerate(rows):
         try:
-            coin = row[0].strip().upper()
-            signal_sheet = row[1].strip().upper()
-            bought = row[5].strip().upper() if len(row) > 5 else ""
-
-            if not coin or "USDT" not in coin:
-                continue
-            symbol = coin.replace("-", "/")
-            symbol_okx = symbol.upper()
-
-            # ✅ Check hợp lệ SPOT
-            market = exchange.markets.get(symbol_okx.replace("/", "-"))
-            if not market or market.get("spot") != True:
+            logging.debug(f"🧪 Đang xử lý dòng {i}: {row}")
+            if not row or len(row) < 2:
+                logging.warning(f"⚠️ Dòng {i} không hợp lệ: {row}")
                 continue
 
-            logging.info(f"✅ {symbol} là SPOT hợp lệ")
+            coin = (row[0] or "").strip().upper()
+            signal = (row[1] or "").strip().upper()
+            gia_hien_tai = row[2] if len(row) > 2 else ""
+            da_mua = (row[5] or "").strip().upper() if len(row) > 5 else ""
 
-            # ✅ Check tín hiệu từ sheet
-            if signal_sheet != "MUA MẠNH" or bought:
+            if signal != "MUA MẠNH":
+                logging.info(f"⛔ {coin} bị loại do tín hiệu = {signal}")
                 continue
 
-            # ✅ Check tín hiệu TradingView
-            tv_signal = check_tradingview_signal(symbol_okx.replace("/", ""))
-            if tv_signal not in ["BUY", "STRONG_BUY"]:
-                logging.info(f"⛔ {symbol} bị loại do TV = {tv_signal}")
+            if da_mua == "ĐÃ MUA":
+                logging.info(f"✅ {coin} đã mua trước đó → bỏ qua")
                 continue
 
-            # ✅ Lấy giá hiện tại
-            ticker = exchange.fetch_ticker(symbol_okx)
-            price = ticker["last"]
+            logging.info(f"🛒 Đang xét mua {coin}...")
 
-            # ✅ Đặt lệnh mua nếu chưa có
-            amount = round(10 / price, 6)
-            logging.info(f"🟢 Đặt lệnh mua {amount} {symbol} (~10 USDT)")
-            order = exchange.create_market_buy_order(symbol_okx, amount)
-            logging.info(f"✅ Đã mua {symbol}: orderId = {order['id']}")
+            # Lấy giá thị trường
+            try:
+                ticker = exchange.fetch_ticker(f"{coin}/USDT")
+                last_price = ticker['last']
+                logging.info(f"💰 Giá hiện tại {coin}: {last_price}")
+            except Exception as e:
+                logging.warning(f"⚠️ Không lấy được giá cho {coin}: {e}")
+                continue
+
+            # Đặt lệnh mua 10 USDT
+            usdt_amount = 10
+            amount = round(usdt_amount / last_price, 6)
+            logging.info(f"📦 Đặt mua {coin} với số lượng {amount} ({usdt_amount} USDT)")
+            # lệnh giả lập:
+            # order = exchange.create_market_buy_order(f"{coin}/USDT", amount)
+
         except Exception as e:
             logging.warning(f"⚠️ Lỗi tại dòng {i}: {e}")
 
