@@ -31,7 +31,21 @@ def fetch_sheet():
     except Exception as e:
         logging.error(f"❌ Không thể tải Google Sheet: {e}")
         return []
-
+# ✅ Lấy tín hiệu tradingview
+def check_tradingview_signal(symbol: str) -> str:
+    try:
+        url = "https://scanner.tradingview.com/crypto/scan"
+        payload = {
+            "symbols": {"tickers": [f"BINANCE:{symbol}"], "query": {"types": []}},
+            "columns": ["recommendation"]
+        }
+        res = requests.post(url, json=payload)
+        res.raise_for_status()
+        signal = res.json()['data'][0]['d'][0]
+        return signal
+    except Exception as e:
+        logging.warning(f"⚠️ Lỗi lấy tín hiệu TV cho {symbol}: {e}")
+        return None
 # ✅ Hàm chính
 def run_bot():
     logging.info("🤖 Bắt đầu chạy bot SPOT OKX...")
@@ -65,9 +79,12 @@ def run_bot():
             if da_mua == "ĐÃ MUA":
                 logging.info(f"✅ {coin} đã mua trước đó → bỏ qua")
                 continue
-
             logging.info(f"🛒 Đang xét mua {coin}...")
-
+            # Tín hiệu TV
+            signal_tv = check_tradingview_signal(symbol_tv)
+            if signal_tv not in ["BUY", "STRONG_BUY"]:
+                logging.info(f"❌ {symbol} bị loại do tín hiệu TV = {signal_tv}")
+                continue
             # Lấy giá thị trường
             try:
                 ticker = exchange.fetch_ticker(f"{coin}/USDT")
