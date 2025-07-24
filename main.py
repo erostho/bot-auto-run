@@ -1,43 +1,3 @@
-import os
-import csv
-import requests
-import logging
-from datetime import datetime
-import ccxt
-
-# Cấu hình logging
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s:%(name)s: %(message)s")
-logger = logging.getLogger()
-
-# Đọc biến môi trường
-SPREADSHEET_URL = os.environ.get("SPREADSHEET_URL")
-OKX_API_KEY = os.environ.get("OKX_API_KEY")
-OKX_API_SECRET = os.environ.get("OKX_API_SECRET")
-OKX_API_PASSPHRASE = os.environ.get("OKX_API_PASSPHRASE")
-
-# Khởi tạo OKX
-exchange = ccxt.okx({
-    'apiKey': OKX_API_KEY,
-    'secret': OKX_API_SECRET,
-    'password': OKX_API_PASSPHRASE,
-    'enableRateLimit': True,
-    'options': {
-        'defaultType': 'spot'
-    }
-})
-
-
-def fetch_sheet():
-    try:
-        csv_url = SPREADSHEET_URL.replace("/edit#gid=", "/export?format=csv&gid=")
-        res = requests.get(csv_url)
-        res.raise_for_status()
-        return list(csv.reader(res.content.decode("utf-8").splitlines()))
-    except Exception as e:
-        logging.error(f"❌ Không thể tải Google Sheet: {e}")
-        return []
-
-
 def run_bot():
     rows = fetch_sheet()
 
@@ -54,7 +14,6 @@ def run_bot():
             ngay = row[3].strip() if len(row) > 3 else ""
             da_mua = row[5].strip().upper() if len(row) > 5 else ""
 
-            coin = symbol.replace("-USDT", "")
             logger.info(f"🛒 Đang xét mua {symbol}...")
 
             # Bỏ qua nếu chưa có giá mua hoặc đã mua rồi
@@ -67,45 +26,46 @@ def run_bot():
                 logger.info(f"❌ {symbol} bị loại do tín hiệu Sheet = {signal}")
                 continue
 
-            # ✅ Gửi tín hiệu check TradingView trực tiếp
+            # ✅ Tạo tv_symbol trực tiếp mà không cần normalize
+            tv_symbol = f"BINANCE:{symbol.replace('-', '')}"
+
+            url = "https://scanner.tradingview.com/crypto/scan"
+            payload = {
+                "symbols": {"tickers": [tv_symbol]},
+                "columns": ["recommendation"]
+            }
+
+            logging.debug(f"📡 Gửi request TV cho {symbol} → {tv_symbol} với payload: {payload}")
+            res = requests.post(url, json=payload, timeout=5)
+            res.raise_for_status()
+
+            data = res.json()
+            logging.debug(f"📊 Phản hồi từ TradingView cho {tv_symbol}: {data}")
+
+            if not data.get("data"):
+                logger.warning(f"⚠️ Không nhận được tín hiệu từ TradingView cho {symbol}")
+                continue
+
+            recommendation = data["data"][0]["d"][0]
+            logger.info(f"📈 Tín hiệu TradingView cho {symbol} = {recommendation}")
+
+            if recommendation not in ["BUY", "STRONG_BUY"]:
+                logger.info(f"❌ Loại {symbol} do tín hiệu TradingView = {recommendation}")
+                continue
+
+            # ✅ Nếu tới đây thì hợp lệ → tiến hành mua SPOT
             try:
-                tv_symbol = normalize_tv_symbol(symbol)
-                url = "https://scanner.tradingview.com/crypto/scan"
-                payload = {
-                    "symbols": {"tickers": [tv_symbol]},
-                    "columns": ["recommendation"]
-                }
-        
-                logging.debug(f"📡 Gửi request TV cho {symbol} → {tv_symbol} với payload: {payload}")
-                res = requests.post(url, json=payload, timeout=5)
-                res.raise_for_status()
-        
-                data = res.json()
-                logging.debug(f"📊 Phản hồi từ TradingView cho {tv_symbol}: {data}")
-        
-                if not data.get("data"):
-                    return None
-                return data["data"][0]["d"][0]
-        
+                usdt_amount = 10  # số USDT muốn mua
+                price = exchange.fetch_ticker(symbol)['last']
+                amount = round(usdt_amount / price, 6)  # khối lượng coin muốn mua
+            
+                logger.info(f"💰 Đặt lệnh mua {amount} {symbol} với tổng {usdt_amount} USDT (giá {price})")
+            
+                order = exchange.create_market_buy_order(symbol, amount)
+                logger.info(f"✅ Đã mua {symbol}: {order}")
+            
+                # Ghi log vào sheet hoặc cập nhật trạng thái “ĐÃ MUA” (nếu có xử lý thêm)
             except Exception as e:
-                logging.warning(f"⚠️ Lỗi lấy tín hiệu TV cho {symbol}: {e}")
-                return None
-
-
-            # ✅ Mua SPOT
-            usdt_amount = 10
-            price = exchange.fetch_ticker(symbol.replace("-", "/"))['last']
-            quantity = round(usdt_amount / price, 6)
-
-            logger.info(f"🟢 Mua {symbol} với khối lượng {quantity} @ {price}")
-            order = exchange.create_market_buy_order(symbol.replace("-", "/"), quantity)
-
-            logger.info(f"✅ Đã mua {symbol}: OrderID = {order['id']}")
-
+                logger.error(f"❌ Lỗi khi mua {symbol}: {e}")
         except Exception as e:
-            logger.warning(f"❌ Lỗi dòng {i}: {e}")
-
-
-if __name__ == "__main__":
-    logger.info("🚀 Bắt đầu chạy bot SPOT OKX...")
-    run_bot()
+            logger.error(f"❌ Lỗi khi xử lý dòng {i} - {row}: {e}")
