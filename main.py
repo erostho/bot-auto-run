@@ -39,7 +39,7 @@ def fetch_sheet():
 
 def get_short_term_trend(symbol):
     score = 0
-    timeframes = ["1h", "4h", "1d"]
+    timeframes = ["1h", "4h", "1d", "1w"]
 
     for tf in timeframes:
         try:
@@ -107,6 +107,20 @@ def run_bot():
                 logger.info(f"❌ {symbol} bị loại do tín hiệu Sheet = {signal}")
                 continue
 
+            # ✅ Kiểm tra nếu đã quá hạn tần suất (theo giờ Việt Nam UTC+7)
+            if len(row) > 4 and row[4].strip():
+                try:
+                    freq_minutes = int(row[4].strip())
+                    time_str = row[3].strip()
+                    signal_time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S")
+                    now_vn = datetime.now(timezone(timedelta(hours=7)))
+                    elapsed = (now_vn - signal_time).total_seconds() / 60
+                    if elapsed > freq_minutes:
+                        logger.info(f"⏱ Bỏ qua {symbol} vì đã quá hạn {freq_minutes} phút (đã qua {int(elapsed)} phút)")
+                        continue
+                except Exception as e:
+                    logger.warning(f"⚠️ Không thể kiểm tra tần suất cho {symbol}: {e}")
+
             # ✅ Phân tích xu hướng ngắn hạn thay cho TradingView
             trend = get_short_term_trend(symbol)
             logger.info(f"📈 Xu hướng ngắn hạn của {symbol} = {trend}")
@@ -114,14 +128,16 @@ def run_bot():
             if trend != "TĂNG":
                 logger.info(f"❌ Bỏ qua {symbol} vì xu hướng ngắn hạn = {trend}")
                 continue
-            # ✅ Kiểm tra nếu đã có coin trong tài khoản SPOT
+
+            # ✅ Kiểm tra nếu đã có coin trong ví Spot
             coin_name = symbol.split("-")[0]
             balances = exchange.fetch_balance()
             asset_balance = balances.get(coin_name, {}).get('total', 0)
-            
+
             if asset_balance and asset_balance > 0:
                 logger.info(f"❌ Bỏ qua {symbol} vì đã có {asset_balance} {coin_name} trong ví")
                 continue
+
             # ✅ Nếu tới đây thì đủ điều kiện mua SPOT
             try:
                 usdt_amount = 10
