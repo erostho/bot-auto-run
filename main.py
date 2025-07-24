@@ -114,7 +114,14 @@ def run_bot():
             if trend != "TĂNG":
                 logger.info(f"❌ Bỏ qua {symbol} vì xu hướng ngắn hạn = {trend}")
                 continue
-
+            # ✅ Kiểm tra nếu đã có coin trong tài khoản SPOT
+            coin_name = symbol.split("-")[0]
+            balances = exchange.fetch_balance()
+            asset_balance = balances.get(coin_name, {}).get('total', 0)
+            
+            if asset_balance and asset_balance > 0:
+                logger.info(f"❌ Bỏ qua {symbol} vì đã có {asset_balance} {coin_name} trong ví")
+                continue
             # ✅ Nếu tới đây thì đủ điều kiện mua SPOT
             try:
                 usdt_amount = 10
