@@ -14,7 +14,7 @@ exchange = ccxt.okx({
 })
 
 # ✅ Đọc Google Sheet
-sheet_url = os.getenv("GOOGLE_SHEET_URL")  # phải là link public
+sheet_url = os.getenv("SPREADSHEET_URL")  # phải là link public
 sheet_csv_url = sheet_url.replace("/edit#gid=", "/export?format=csv&gid=")
 df = pd.read_csv(sheet_csv_url)
 
