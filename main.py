@@ -147,7 +147,21 @@ def run_bot():
                     usdt_amount = 10
                     price = exchange.fetch_ticker(symbol)['last']
                     amount = round(usdt_amount / price, 6)
-            
+                    # === CHỐNG FOMO (dành cho trend TĂNG) ===
+                    ohlcv = exchange.fetch_ohlcv(symbol, timeframe="1h", limit=30)
+                    closes = [c[4] for c in ohlcv]
+                    volumes = [c[5] for c in ohlcv]
+                    
+                    rsi = compute_rsi(closes, period=14)
+                    vol = volumes[-1]
+                    vol_sma20 = sum(volumes[-20:]) / 20
+                    price_now = closes[-1]
+                    price_3bars_ago = closes[-4]
+                    price_change = (price_now - price_3bars_ago) / price_3bars_ago * 100
+                    
+                    if rsi > 70 or vol > vol_sma20 * 2 or price_change > 10:
+                        logger.info(f"⛔ {symbol} bị loại do FOMO trong trend TĂNG (RSI={rsi:.1f}, Δgiá 3h={price_change:.1f}%)")
+                        continue
                     logger.info(f"💰 [TĂNG] Mua {amount} {symbol} với {usdt_amount} USDT (giá {price})")
                     order = exchange.create_market_buy_order(symbol, amount)
                     logger.info(f"✅ Đã mua {symbol} theo TĂNG: {order}")
@@ -164,6 +178,17 @@ def run_bot():
                     ohlcv = exchange.fetch_ohlcv(symbol, timeframe="1h", limit=30)
                     closes = [c[4] for c in ohlcv]
                     volumes = [c[5] for c in ohlcv]
+                    # Giả sử đã có ohlcv, closes, volumes
+                    rsi = compute_rsi(closes, period=14)
+                    vol = volumes[-1]
+                    vol_sma20 = sum(volumes[-20:]) / 20
+                    price_now = closes[-1]
+                    price_3bars_ago = closes[-4]
+                    price_change = (price_now - price_3bars_ago) / price_3bars_ago * 100
+                    # Nếu có dấu hiệu FOMO thì bỏ qua
+                    if rsi > 70 or vol > vol_sma20 * 2 or price_change > 10:
+                        logger.info(f"⛔ {symbol} bị loại do dấu hiệu FOMO (RSI={rsi:.2f}, Δgiá 3h={price_change:.1f}%, vol={vol:.0f})")
+                        continue
                     if len(closes) < 20:
                         logger.warning(f"⚠️ Không đủ dữ liệu nến cho {symbol}")
                         continue
@@ -177,12 +202,10 @@ def run_bot():
                     if rsi >= 55 or vol >= vol_sma20:
                         logger.info(f"⛔ {symbol} bị loại (SIDEWAY nhưng không nén đủ mạnh)")
                         continue
-            
                     # ✅ Mua nếu đủ điều kiện SIDEWAY tích luỹ
                     usdt_amount = 10
                     price = exchange.fetch_ticker(symbol)['last']
                     amount = round(usdt_amount / price, 6)
-            
                     logger.info(f"💰 [SIDEWAY] Mua {amount} {symbol} với {usdt_amount} USDT (giá {price})")
                     order = exchange.create_market_buy_order(symbol, amount)
                     logger.info(f"✅ Đã mua {symbol} theo SIDEWAY: {order}")
