@@ -41,16 +41,27 @@ except Exception as e:
 # --- Hàm check tín hiệu từ TradingView ---
 def check_tradingview_signal(symbol: str) -> str:
     try:
+        # ⚠️ Ghép USDT nếu chưa có, không dùng dấu "/"
+        tv_symbol = symbol.upper()
+        if not tv_symbol.endswith("USDT"):
+            tv_symbol += "USDT"
+
+        print(f"🔍 [TV] Đang kiểm tra tín hiệu TradingView cho: {tv_symbol}")
+
         handler = TA_Handler(
-            symbol=symbol.upper(),          # KHÔNG cần /USDT
+            symbol=tv_symbol,
             screener="crypto",
             exchange="OKX",
-            interval=Interval.INTERVAL_1_HOUR  # ⏰ Nến 1H
+            interval=Interval.INTERVAL_1_HOUR
         )
+
         result = handler.get_analysis()
-        return result.summary.get("RECOMMENDATION", "")
+        recommendation = result.summary.get("RECOMMENDATION", "")
+        print(f"✅ [TV] Tín hiệu cho {tv_symbol} = {recommendation}")
+        return recommendation
+
     except Exception as e:
-        print(f"⚠️ Lỗi TV cho {symbol}: {e}")
+        print(f"⚠️ [TV] Lỗi khi lấy tín hiệu cho {symbol} ({tv_symbol}): {e}")
         return ""
 
 # --- Duyệt từng dòng coin ---
