@@ -34,18 +34,8 @@ exchange = ccxt.okx({
     }
 })
 
-def fetch_sheet():
-    try:
-        csv_url = SPREADSHEET_URL.replace("/edit#gid=", "/export?format=csv&gid=")
-        res = requests.get(csv_url)
-        res.raise_for_status()
-        return list(csv.reader(res.content.decode("utf-8").splitlines()))
-    except Exception as e:
-        logging.error(f"❌ Không thể tải Google Sheet: {e}")
-        return []
 
 spot_entry_prices_path = "spot_entry_prices.json"
-
 def auto_sell_watcher():
     global spot_entry_prices
     spot_entry_prices = load_entry_prices()
@@ -119,6 +109,16 @@ def auto_sell_watcher():
             logger.error(f"❌ Lỗi AUTO SELL: {e}")
 
         time.sleep(180)
+        
+def fetch_sheet():
+    try:
+        csv_url = SPREADSHEET_URL.replace("/edit#gid=", "/export?format=csv&gid=")
+        res = requests.get(csv_url)
+        res.raise_for_status()
+        return list(csv.reader(res.content.decode("utf-8").splitlines()))
+    except Exception as e:
+        logging.error(f"❌ Không thể tải Google Sheet: {e}")
+        return []
 
 def get_short_term_trend(symbol):
     score = 0
