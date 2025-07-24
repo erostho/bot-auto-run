@@ -1,8 +1,9 @@
+from datetime import datetime, timedelta, timezone
+import threading
 import os
 import csv
 import requests
 import logging
-from datetime import datetime
 import ccxt
 import time
 
@@ -149,9 +150,59 @@ def run_bot():
                 logger.info(f"✅ Đã mua {symbol}: {order}")
             except Exception as e:
                 logger.error(f"❌ Lỗi khi mua {symbol}: {e}")
-
         except Exception as e:
             logger.error(f"❌ Lỗi khi xử lý dòng {i} - {row}: {e}")
 
 if __name__ == "__main__":
     run_bot()
+import threading
+
+def auto_sell_watcher():
+    import time
+    while True:
+        try:
+            logger.info("🔁 [AUTO SELL] Đang kiểm tra tài khoản để bán...")
+            rows = fetch_sheet()
+            balances = exchange.fetch_balance()
+            for i, row in enumerate(rows):
+                try:
+                    if not row or len(row) < 7:
+                        continue
+
+                    symbol = row[0].strip().upper()            # DUCK-USDT
+                    da_mua = row[5].strip().upper()            # ĐÃ MUA
+                    gia_mua = float(row[2]) if row[2] else 0   # Giá mua
+                    gia_ban = row[6].strip()
+
+                    if da_mua != "ĐÃ MUA" or gia_mua == 0:
+                        continue
+
+                    coin = symbol.split("-")[0]                # DUCK
+                    coin_balance = balances.get(coin, {}).get('total', 0)
+                    if coin_balance <= 0:
+                        continue
+
+                    current_price = exchange.fetch_ticker(symbol)['last']
+                    target_price = gia_mua * 1.1
+
+                    if current_price >= target_price:
+                        logger.info(f"💰 Giá {symbol} = {current_price} > {target_price} → BÁN {coin_balance} {coin}")
+                        order = exchange.create_market_sell_order(symbol, coin_balance)
+                        logger.info(f"✅ Đã bán {symbol}: {order}")
+                    else:
+                        logger.debug(f"⏳ {symbol} chưa đủ lời: {current_price} < {target_price}")
+
+                except Exception as e:
+                    logger.warning(f"⚠️ Lỗi khi xét bán {symbol}: {e}")
+
+        except Exception as e:
+            logger.error(f"❌ Lỗi AUTO SELL: {e}")
+        time.sleep(180)  # đợi 3 phút
+
+# Gọi thread auto bán sau run_bot
+if __name__ == "__main__":
+    threading.Thread(target=auto_sell_watcher, daemon=True).start()
+    run_bot()
+    # ✅ Giữ chương trình sống (để thread không bị kill)
+    while True:
+        time.sleep(60)
