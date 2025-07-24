@@ -4,6 +4,7 @@ import requests
 import logging
 from datetime import datetime
 import ccxt
+import time
 
 # Cấu hình logging
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s:%(message)s")
@@ -36,6 +37,50 @@ def fetch_sheet():
         logging.error(f"❌ Không thể tải Google Sheet: {e}")
         return []
 
+def get_short_term_trend(symbol):
+    score = 0
+    timeframes = ["1h", "4h", "1d"]
+
+    for tf in timeframes:
+        try:
+            ohlcv = exchange.fetch_ohlcv(symbol, timeframe=tf, limit=50)
+            closes = [c[4] for c in ohlcv]
+            if len(closes) < 50:
+                continue
+
+            ema20 = sum(closes[-20:]) / 20
+            ema50 = sum(closes[-50:]) / 50
+            rsi = compute_rsi(closes, period=14)
+
+            if rsi > 60 and ema20 > ema50:
+                score += 2
+            elif rsi > 50 and ema20 > ema50:
+                score += 1
+        except Exception as e:
+            logger.warning(f"⚠️ Không thể fetch nến {tf} cho {symbol}: {e}")
+            continue
+
+    if score >= 4:
+        return "TĂNG"
+    elif score <= 1:
+        return "GIẢM"
+    else:
+        return "KHÔNG RÕ"
+
+def compute_rsi(closes, period=14):
+    deltas = [closes[i] - closes[i - 1] for i in range(1, len(closes))]
+    gains = [delta if delta > 0 else 0 for delta in deltas]
+    losses = [-delta if delta < 0 else 0 for delta in deltas]
+
+    avg_gain = sum(gains[:period]) / period
+    avg_loss = sum(losses[:period]) / period
+    if avg_loss == 0:
+        return 100
+
+    rs = avg_gain / avg_loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
+
 def run_bot():
     rows = fetch_sheet()
 
@@ -62,36 +107,17 @@ def run_bot():
                 logger.info(f"❌ {symbol} bị loại do tín hiệu Sheet = {signal}")
                 continue
 
-            # ✅ Tạo tv_symbol theo định dạng OKX
-            tv_symbol = f"OKX:{symbol.replace('-', '')}"
+            # ✅ Phân tích xu hướng ngắn hạn thay cho TradingView
+            trend = get_short_term_trend(symbol)
+            logger.info(f"📈 Xu hướng ngắn hạn của {symbol} = {trend}")
 
-            url = "https://scanner.tradingview.com/crypto/scan"
-            payload = {
-                "symbols": {"tickers": [tv_symbol]},
-                "columns": ["recommendation"]
-            }
-
-            logging.debug(f"📡 Gửi request TV cho {symbol} → {tv_symbol} với payload: {payload}")
-            res = requests.post(url, json=payload, timeout=5)
-            res.raise_for_status()
-
-            data = res.json()
-            logging.debug(f"📊 Phản hồi từ TradingView cho {tv_symbol}: {data}")
-
-            if not data.get("data"):
-                logger.warning(f"⚠️ Không nhận được tín hiệu từ TradingView cho {symbol}")
+            if trend != "TĂNG":
+                logger.info(f"❌ Bỏ qua {symbol} vì xu hướng ngắn hạn = {trend}")
                 continue
 
-            recommendation = data["data"][0]["d"][0]
-            logger.info(f"📈 Tín hiệu TradingView cho {symbol} = {recommendation}")
-
-            if recommendation not in ["BUY", "STRONG_BUY"]:
-                logger.info(f"❌ Loại {symbol} do tín hiệu TradingView = {recommendation}")
-                continue
-
-            # ✅ Nếu tới đây thì hợp lệ → tiến hành mua SPOT
+            # ✅ Nếu tới đây thì đủ điều kiện mua SPOT
             try:
-                usdt_amount = 10  # số USDT muốn mua
+                usdt_amount = 10
                 price = exchange.fetch_ticker(symbol)['last']
                 amount = round(usdt_amount / price, 6)
 
