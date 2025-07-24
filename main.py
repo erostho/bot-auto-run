@@ -141,7 +141,7 @@ def run_bot():
             balances = exchange.fetch_balance()
             asset_balance = balances.get(coin_name, {}).get('total', 0)
 
-            if asset_balance and asset_balance > 0:
+            if asset_balance and asset_balance > 1:
                 logger.info(f"❌ Bỏ qua {symbol} vì đã có {asset_balance} {coin_name} trong ví")
                 continue
 
