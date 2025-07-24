@@ -34,7 +34,7 @@ exchange = ccxt.okx({
     }
 })
 
-
+spot_entry_prices = {}  # ✅ khai báo biến toàn cục
 spot_entry_prices_path = "spot_entry_prices.json"
 def auto_sell_watcher():
     global spot_entry_prices
@@ -165,6 +165,7 @@ def compute_rsi(closes, period=14):
     return rsi
 
 def run_bot():
+    global spot_entry_prices
     rows = fetch_sheet()
 
     for i, row in enumerate(rows):
@@ -242,6 +243,7 @@ def run_bot():
                     order = exchange.create_market_buy_order(symbol, amount)
                     logger.info(f"✅ Đã mua {symbol} theo TĂNG: {order}")
                     # Giả sử sau khi vào lệnh mua thành công:
+                    global spot_entry_prices
                     spot_entry_prices[symbol] = {
                         "price": price,
                         "timestamp": datetime.utcnow().isoformat() + "Z"
@@ -290,6 +292,7 @@ def run_bot():
                     order = exchange.create_market_buy_order(symbol, amount)
                     logger.info(f"✅ Đã mua {symbol} theo SIDEWAY: {order}")
                     # Giả sử sau khi vào lệnh mua thành công:
+                    global spot_entry_prices
                     spot_entry_prices[symbol] = {
                         "price": price,
                         "timestamp": datetime.utcnow().isoformat() + "Z"
