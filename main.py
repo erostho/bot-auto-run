@@ -29,13 +29,12 @@ exchange = ccxt.okx({
 
 def fetch_sheet():
     try:
-        response = requests.get(SHEET_URL)
-        response.raise_for_status()
-        decoded = response.content.decode('utf-8')
-        reader = csv.reader(decoded.splitlines())
-        return list(reader)[1:]  # bỏ dòng tiêu đề
+        csv_url = SPREADSHEET_URL.replace("/edit#gid=", "/export?format=csv&gid=")
+        res = requests.get(csv_url)
+        res.raise_for_status()
+        return list(csv.reader(res.content.decode("utf-8").splitlines()))
     except Exception as e:
-        logger.error(f"❌ Lỗi khi đọc Google Sheet: {e}")
+        logging.error(f"❌ Không thể tải Google Sheet: {e}")
         return []
 
 
