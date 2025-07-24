@@ -6,6 +6,7 @@ import requests
 import logging
 import ccxt
 import time
+import json
 
 # Cấu hình logging
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s:%(message)s")
@@ -155,49 +156,74 @@ def run_bot():
 
 if __name__ == "__main__":
     run_bot()
-import threading
+
+spot_entry_prices_path = "spot_entry_prices.json"
+# Tải lại giá mua từ file nếu có
+def load_entry_prices():
+    try:
+        with open(spot_entry_prices_path, "r") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+# Lưu lại sau khi bán xong
+def save_entry_prices(data):
+    with open(spot_entry_prices_path, "w") as f:
+        json.dump(data, f)
 
 def auto_sell_watcher():
     import time
+    global spot_entry_prices
+    spot_entry_prices = load_entry_prices()
+
     while True:
         try:
-            logger.info("🔁 [AUTO SELL] Đang kiểm tra tài khoản để bán...")
-            rows = fetch_sheet()
+            logger.info("🔁 [AUTO SELL] Kiểm tra ví SPOT để chốt lời...")
             balances = exchange.fetch_balance()
-            for i, row in enumerate(rows):
+            tickers = exchange.fetch_tickers()
+
+            updated_prices = spot_entry_prices.copy()
+
+            for coin, balance_data in balances.items():
                 try:
-                    if not row or len(row) < 7:
+                    balance = balance_data.get("total", 0)
+                    if not balance or balance <= 0:
                         continue
 
-                    symbol = row[0].strip().upper()            # DUCK-USDT
-                    da_mua = row[5].strip().upper()            # ĐÃ MUA
-                    gia_mua = float(row[2]) if row[2] else 0   # Giá mua
-                    gia_ban = row[6].strip()
-
-                    if da_mua != "ĐÃ MUA" or gia_mua == 0:
+                    # Tìm symbol tương ứng
+                    symbol = f"{coin}-USDT"
+                    if symbol not in tickers:
                         continue
 
-                    coin = symbol.split("-")[0]                # DUCK
-                    coin_balance = balances.get(coin, {}).get('total', 0)
-                    if coin_balance <= 0:
+                    current_price = tickers[symbol]['last']
+
+                    # Phải có giá mua hợp lệ
+                    entry_str = spot_entry_prices.get(symbol)
+                    try:
+                        entry_price = float(entry_str)
+                    except Exception:
+                        logger.warning(f"⚠️ Giá mua không hợp lệ cho {symbol}: '{entry_str}'")
                         continue
 
-                    current_price = exchange.fetch_ticker(symbol)['last']
-                    target_price = gia_mua * 1.1
-
+                    target_price = entry_price * 1.1
                     if current_price >= target_price:
-                        logger.info(f"💰 Giá {symbol} = {current_price} > {target_price} → BÁN {coin_balance} {coin}")
-                        order = exchange.create_market_sell_order(symbol, coin_balance)
+                        logger.info(f"🚀 BÁN {symbol}: giá hiện tại {current_price} > {target_price} (entry {entry_price})")
+                        order = exchange.create_market_sell_order(symbol, balance)
                         logger.info(f"✅ Đã bán {symbol}: {order}")
+                        updated_prices.pop(symbol, None)  # Xoá sau khi đã bán
                     else:
                         logger.debug(f"⏳ {symbol} chưa đủ lời: {current_price} < {target_price}")
-
                 except Exception as e:
-                    logger.warning(f"⚠️ Lỗi khi xét bán {symbol}: {e}")
+                    logger.warning(f"⚠️ Lỗi khi xử lý {coin}: {e}")
+
+            save_entry_prices(updated_prices)
+            spot_entry_prices = updated_prices
 
         except Exception as e:
             logger.error(f"❌ Lỗi AUTO SELL: {e}")
-        time.sleep(180)  # đợi 3 phút
+
+        time.sleep(180)
+
 
 # Gọi thread auto bán sau run_bot
 if __name__ == "__main__":
