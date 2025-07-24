@@ -124,44 +124,49 @@ for i, row in df.iterrows():
             continue
 
         # --- MUA nếu chưa mua ---
+        print(f"🔍 Đang xét mua {symbol}...")
+        
+        if buy_status == "RỒI":
+            print(f"⏭ Đã mua rồi {symbol}, bỏ qua")
+            continue
+        
+        if symbol not in exchange.markets:
+            print(f"⛔ {symbol} không tồn tại trên sàn OKX")
+            continue
+        
+        try:
+            price = exchange.fetch_ticker(symbol)['last']
+            print(f"💰 Giá hiện tại của {symbol}: {price}")
+        except Exception as e:
+            print(f"❌ Không lấy được giá {symbol}: {e}")
+            continue
+        
+        # Nếu có giới hạn giá trong sheet:
+        if price > gia_mua * 1.05:
+            print(f"⚠️ Giá {symbol} cao hơn 5% so với giá mua gốc → KHÔNG MUA")
+            continue
+        
+        # Tín hiệu TradingView
+        try:
+            signal_tv = check_tradingview_signal(symbol.replace("/", ""))
+            print(f"[TV] Tín hiệu TradingView của {symbol}: {signal_tv}")
+        except Exception as e:
+            print(f"❌ Lỗi lấy tín hiệu TradingView: {e}")
+            continue
+        
+        if signal_tv not in ["BUY", "STRONG_BUY"]:
+            print(f"🚫 {symbol} bị loại do tín hiệu TV = {signal_tv}")
+            continue
+        
+        # Tính amount và đặt lệnh
         usdt_amount = 10
         amount = round(usdt_amount / price, 6)
+        
         try:
             order = exchange.create_market_buy_order(symbol, amount)
-            print(f"✅ Đã MUA {symbol} {amount:.6f} giá ~{price:.4f}")
+            print(f"🚀 Đã MUA {symbol} {amount:.6f} giá ~{price:.4f}")
         except Exception as e:
             print(f"❌ Lỗi MUA {symbol}: {e}")
-            continue
-
-    except Exception as e:
-        print(f"⚠️ Lỗi tại dòng {i}: {e}")
-        continue
-
-# --- Lặp lại để xử lý BÁN ---
-for i, row in df.iterrows():
-    try:
-        coin = str(row.get("Coin")).strip()
-        gia_mua = float(row.get("Giá Mua", 0))
-        buy_status = str(row.get("Đã mua", "")).strip().upper()
-        sell_status = str(row.get("Giá Bán", "")).strip()
-
-        if not coin or buy_status != "RỜI" or not gia_mua:
-            continue
-
-        symbol = f"{coin.upper()}/USDT"
-        if symbol not in exchange.markets:
-            continue
-
-        # Lấy giá hiện tại
-        current_price = exchange.fetch_ticker(symbol)['last']
-        if current_price < gia_mua * 1.1:
-            continue  # Chưa đạt target bán
-
-        # Lấy số dư
-        balance = exchange.fetch_balance()
-        coin_code = coin.upper()
-        amount = balance.get(coin_code, {}).get("free", 0)
-        if amount <= 0:
             continue
 
         # Tạo lệnh bán
