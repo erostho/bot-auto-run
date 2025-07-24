@@ -42,10 +42,10 @@ except Exception as e:
 def check_tradingview_signal(symbol: str) -> str:
     try:
         handler = TA_Handler(
-            symbol=symbol.upper(),
+            symbol=symbol.upper(),          # KHÔNG cần /USDT
             screener="crypto",
             exchange="OKX",
-            interval=Interval.INTERVAL_1_HOUR
+            interval=Interval.INTERVAL_1_HOUR  # ⏰ Nến 1H
         )
         result = handler.get_analysis()
         return result.summary.get("RECOMMENDATION", "")
