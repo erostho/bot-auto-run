@@ -8,10 +8,10 @@ import ccxt
 import time
 import json
 
-json_path = "spot_entry_prices.json"
-if os.path.exists(json_path):
-    os.remove(json_path)
-    print("✅ Đã xoá file spot_entry_prices.json do nghi ngờ lỗi dữ liệu")
+# json_path = "spot_entry_prices.json"
+# if os.path.exists(json_path):
+#    os.remove(json_path)
+#    print("✅ Đã xoá file spot_entry_prices.json do nghi ngờ lỗi dữ liệu")
     
 # Cấu hình logging
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s:%(message)s")
@@ -177,7 +177,6 @@ def save_entry_prices(data):
         json.dump(data, f)
 
 def auto_sell_watcher():
-    import time
     global spot_entry_prices
     spot_entry_prices = load_entry_prices()
 
@@ -191,11 +190,16 @@ def auto_sell_watcher():
 
             for coin, balance_data in balances.items():
                 try:
-                    balance = balance_data.get("total", 0)
+                    for coin, balance_data in balances.items():
+                        if not isinstance(balance_data, dict):
+                            logger.warning(f"⚠️ {coin} không phải dict: {balance_data}")
+                            continue
+                        balance = balance_data.get("total", 0)
                     if not balance or balance <= 0:
                         continue
 
                     # Tìm symbol tương ứng
+                    logger.debug(f"🧾 [AUTO SELL] Xét coin: {coin} | Số dư: {balance}")
                     symbol = f"{coin}-USDT"
                     if symbol not in tickers:
                         continue
@@ -211,6 +215,7 @@ def auto_sell_watcher():
                         
                         try:
                             entry_price = float(entry_str)
+                            logger.debug(f"📊 {symbol}: Giá mua = {entry_price}, Giá hiện tại = {current_price}, Target = {entry_price * 1.1}")
                         except ValueError:
                             logger.warning(f"⚠️ Không thể convert giá mua {entry_str} thành float cho {symbol}")
                             continue
