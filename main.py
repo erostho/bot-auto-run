@@ -44,6 +44,81 @@ def fetch_sheet():
         logging.error(f"❌ Không thể tải Google Sheet: {e}")
         return []
 
+spot_entry_prices_path = "spot_entry_prices.json"
+def auto_sell_watcher():
+    global spot_entry_prices
+    spot_entry_prices = load_entry_prices()
+
+    while True:
+        try:
+            logger.info("🔁 [AUTO SELL] Kiểm tra ví SPOT để chốt lời...")
+            balances = exchange.fetch_balance()
+            tickers = exchange.fetch_tickers()
+
+            updated_prices = spot_entry_prices.copy()
+
+            for coin, balance_data in balances.items():
+                try:
+                    if not isinstance(balance_data, dict):
+                        logger.warning(f"⚠️ {coin} không phải dict: {balance_data}")
+                        continue
+
+                    balance = balance_data.get("total", 0)
+                    if not balance or balance <= 0:
+                        continue
+
+                    logger.debug(f"🧮 [AUTO SELL] Xét coin: {coin} | Số dư: {balance}")
+                    symbol = f"{coin}-USDT"
+                    if symbol not in tickers:
+                        continue
+
+                    current_price = tickers[symbol]['last']
+
+                    # Lấy entry từ dict giá mua
+                    entry_data = spot_entry_prices.get(symbol)
+                    logger.debug(f"📦 [DEBUG] entry_str cho {symbol}: {entry_data} ({type(entry_data)})")
+
+                    if not entry_data:
+                        logger.warning(f"⚠️ Không có giá mua cho {symbol}")
+                        continue
+
+                    if isinstance(entry_data, dict):
+                        entry_price = entry_data.get("price")
+                        logger.debug(f"📦 [DEBUG] Đã lấy giá từ dict cho {symbol}: {entry_price}")
+                    else:
+                        entry_price = entry_data
+
+                    if not isinstance(entry_price, (int, float, str)):
+                        logger.warning(f"⚠️ entry_str cho {symbol} không hợp lệ: {entry_price}")
+                        continue
+
+                    try:
+                        entry_price = float(entry_price)
+                    except ValueError:
+                        logger.warning(f"⚠️ Không thể convert giá mua {entry_price} thành float cho {symbol}")
+                        continue
+
+                    target_price = entry_price * 1.1
+
+                    if current_price >= target_price:
+                        logger.info(f"🚀 BÁN {symbol}: giá hiện tại {current_price} > {target_price} (entry {entry_price})")
+                        order = exchange.create_market_sell_order(symbol, balance)
+                        logger.info(f"✅ Đã bán {symbol}: {order}")
+                        updated_prices.pop(symbol, None)
+                    else:
+                        logger.debug(f"⏳ {symbol} chưa đủ lời: {current_price} < {target_price}")
+
+                except Exception as e:
+                    logger.warning(f"⚠️ Lỗi khi xử lý {coin}: {e}")
+
+            save_entry_prices(updated_prices)
+            spot_entry_prices = updated_prices
+
+        except Exception as e:
+            logger.error(f"❌ Lỗi AUTO SELL: {e}")
+
+        time.sleep(180)
+
 def get_short_term_trend(symbol):
     score = 0
     timeframes = ["1h", "4h", "1d"]
@@ -231,78 +306,4 @@ if __name__ == "__main__":
     while True:
         time.sleep(60)
 
-spot_entry_prices_path = "spot_entry_prices.json"
-def auto_sell_watcher():
-    global spot_entry_prices
-    spot_entry_prices = load_entry_prices()
-
-    while True:
-        try:
-            logger.info("🔁 [AUTO SELL] Kiểm tra ví SPOT để chốt lời...")
-            balances = exchange.fetch_balance()
-            tickers = exchange.fetch_tickers()
-
-            updated_prices = spot_entry_prices.copy()
-
-            for coin, balance_data in balances.items():
-                try:
-                    if not isinstance(balance_data, dict):
-                        logger.warning(f"⚠️ {coin} không phải dict: {balance_data}")
-                        continue
-
-                    balance = balance_data.get("total", 0)
-                    if not balance or balance <= 0:
-                        continue
-
-                    logger.debug(f"🧮 [AUTO SELL] Xét coin: {coin} | Số dư: {balance}")
-                    symbol = f"{coin}-USDT"
-                    if symbol not in tickers:
-                        continue
-
-                    current_price = tickers[symbol]['last']
-
-                    # Lấy entry từ dict giá mua
-                    entry_data = spot_entry_prices.get(symbol)
-                    logger.debug(f"📦 [DEBUG] entry_str cho {symbol}: {entry_data} ({type(entry_data)})")
-
-                    if not entry_data:
-                        logger.warning(f"⚠️ Không có giá mua cho {symbol}")
-                        continue
-
-                    if isinstance(entry_data, dict):
-                        entry_price = entry_data.get("price")
-                        logger.debug(f"📦 [DEBUG] Đã lấy giá từ dict cho {symbol}: {entry_price}")
-                    else:
-                        entry_price = entry_data
-
-                    if not isinstance(entry_price, (int, float, str)):
-                        logger.warning(f"⚠️ entry_str cho {symbol} không hợp lệ: {entry_price}")
-                        continue
-
-                    try:
-                        entry_price = float(entry_price)
-                    except ValueError:
-                        logger.warning(f"⚠️ Không thể convert giá mua {entry_price} thành float cho {symbol}")
-                        continue
-
-                    target_price = entry_price * 1.1
-
-                    if current_price >= target_price:
-                        logger.info(f"🚀 BÁN {symbol}: giá hiện tại {current_price} > {target_price} (entry {entry_price})")
-                        order = exchange.create_market_sell_order(symbol, balance)
-                        logger.info(f"✅ Đã bán {symbol}: {order}")
-                        updated_prices.pop(symbol, None)
-                    else:
-                        logger.debug(f"⏳ {symbol} chưa đủ lời: {current_price} < {target_price}")
-
-                except Exception as e:
-                    logger.warning(f"⚠️ Lỗi khi xử lý {coin}: {e}")
-
-            save_entry_prices(updated_prices)
-            spot_entry_prices = updated_prices
-
-        except Exception as e:
-            logger.error(f"❌ Lỗi AUTO SELL: {e}")
-
-        time.sleep(180)
 
