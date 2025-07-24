@@ -8,8 +8,7 @@ from tradingview_ta import TA_Handler, Interval
 # Logging setup
 logging.basicConfig(
     level=logging.DEBUG,  # thay vì DEBUG/INFO
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    stream=sys.stdout
+    format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
 # --- Load biến môi trường ---
