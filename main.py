@@ -8,10 +8,10 @@ import ccxt
 import time
 import json
 
-# json_path = "spot_entry_prices.json"
-# if os.path.exists(json_path):
-#    os.remove(json_path)
-#    print("✅ Đã xoá file spot_entry_prices.json do nghi ngờ lỗi dữ liệu")
+json_path = "spot_entry_prices.json"
+if os.path.exists(json_path):
+    os.remove(json_path)
+    print("✅ Đã xoá file spot_entry_prices.json do nghi ngờ lỗi dữ liệu")
     
 # Cấu hình logging
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s:%(message)s")
