@@ -200,7 +200,15 @@ def auto_sell_watcher():
                     # Phải có giá mua hợp lệ
                     entry_str = spot_entry_prices.get(symbol)
                     try:
-                        entry_price = float(entry_str)
+                        if not entry_str or not isinstance(entry_str, (int, float, str)):
+                            logger.warning(f"⚠️ Không có giá mua hợp lệ cho {symbol}: '{entry_str}'")
+                            continue
+                        
+                        try:
+                            entry_price = float(entry_str)
+                        except ValueError:
+                            logger.warning(f"⚠️ Không thể convert giá mua {entry_str} thành float cho {symbol}")
+                            continue
                     except Exception:
                         logger.warning(f"⚠️ Giá mua không hợp lệ cho {symbol}: '{entry_str}'")
                         continue
