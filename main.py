@@ -1,6 +1,7 @@
 import os
 import ccxt
 import pandas as pd
+import logging
 from datetime import datetime
 from tradingview_ta import TA_Handler, Interval
 
