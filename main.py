@@ -1,3 +1,41 @@
+import os
+import csv
+import requests
+import logging
+from datetime import datetime
+import ccxt
+
+# Cấu hình logging
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s:%(message)s")
+logger = logging.getLogger()
+
+# Đọc biến môi trường
+SPREADSHEET_URL = os.environ.get("SPREADSHEET_URL")
+OKX_API_KEY = os.environ.get("OKX_API_KEY")
+OKX_API_SECRET = os.environ.get("OKX_API_SECRET")
+OKX_API_PASSPHRASE = os.environ.get("OKX_API_PASSPHRASE")
+
+# Khởi tạo OKX
+exchange = ccxt.okx({
+    'apiKey': OKX_API_KEY,
+    'secret': OKX_API_SECRET,
+    'password': OKX_API_PASSPHRASE,
+    'enableRateLimit': True,
+    'options': {
+        'defaultType': 'spot'
+    }
+})
+
+def fetch_sheet():
+    try:
+        csv_url = SPREADSHEET_URL.replace("/edit#gid=", "/export?format=csv&gid=")
+        res = requests.get(csv_url)
+        res.raise_for_status()
+        return list(csv.reader(res.content.decode("utf-8").splitlines()))
+    except Exception as e:
+        logging.error(f"❌ Không thể tải Google Sheet: {e}")
+        return []
+
 def run_bot():
     rows = fetch_sheet()
 
@@ -16,18 +54,16 @@ def run_bot():
 
             logger.info(f"🛒 Đang xét mua {symbol}...")
 
-            # Bỏ qua nếu chưa có giá mua hoặc đã mua rồi
             if not gia_mua or da_mua == "ĐÃ MUA":
                 logger.info(f"⏩ Bỏ qua {symbol} do {'đã mua' if da_mua == 'ĐÃ MUA' else 'thiếu giá'}")
                 continue
 
-            # Kiểm tra tín hiệu sheet
             if signal != "MUA MẠNH":
                 logger.info(f"❌ {symbol} bị loại do tín hiệu Sheet = {signal}")
                 continue
 
-            # ✅ Tạo tv_symbol trực tiếp mà không cần normalize
-            tv_symbol = f"BINANCE:{symbol.replace('-', '')}"
+            # ✅ Tạo tv_symbol theo định dạng OKX
+            tv_symbol = f"OKX:{symbol.replace('-', '')}"
 
             url = "https://scanner.tradingview.com/crypto/scan"
             payload = {
@@ -57,15 +93,16 @@ def run_bot():
             try:
                 usdt_amount = 10  # số USDT muốn mua
                 price = exchange.fetch_ticker(symbol)['last']
-                amount = round(usdt_amount / price, 6)  # khối lượng coin muốn mua
-            
+                amount = round(usdt_amount / price, 6)
+
                 logger.info(f"💰 Đặt lệnh mua {amount} {symbol} với tổng {usdt_amount} USDT (giá {price})")
-            
                 order = exchange.create_market_buy_order(symbol, amount)
                 logger.info(f"✅ Đã mua {symbol}: {order}")
-            
-                # Ghi log vào sheet hoặc cập nhật trạng thái “ĐÃ MUA” (nếu có xử lý thêm)
             except Exception as e:
                 logger.error(f"❌ Lỗi khi mua {symbol}: {e}")
+
         except Exception as e:
             logger.error(f"❌ Lỗi khi xử lý dòng {i} - {row}: {e}")
+
+if __name__ == "__main__":
+    run_bot()
