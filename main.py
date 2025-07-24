@@ -79,11 +79,23 @@ for i, row in df.iterrows():
             print(f"⚠️ Lỗi thời gian cho {coin}, bỏ qua")
             continue
 
-        symbol_spot = f"{coin.upper()}"
+        symbol_spot = coin.upper().replace("/", "-")
         market = exchange.markets.get(symbol_spot)
-        if not market or market.get("spot") != True:
-            print(f"⚠️ {symbol_spot} không tồn tại trên OKX SPOT")
+        
+        if not market:
+            print(f"⚠️ {symbol_spot} KHÔNG tìm thấy trong exchange.markets")
+            
+            # Gợi ý các symbol gần giống
+            similar = [s for s in exchange.markets.keys() if coin.split("/")[0].upper() in s]
+            print(f"🔍 Gợi ý symbol gần giống: {similar}")
             continue
+        
+        if not market.get("spot"):
+            print(f"⚠️ {symbol_spot} TỒN TẠI nhưng KHÔNG PHẢI SPOT trên OKX")
+            continue
+        
+        # ✅ Nếu qua được thì là SPOT hợp lệ
+        print(f"✅ {symbol_spot} là SPOT hợp lệ")
 
         # ✅ Check tín hiệu từ TradingView
         tv_signal = check_tradingview_signal(coin)
