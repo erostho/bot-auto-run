@@ -4,6 +4,12 @@ import pandas as pd
 import os
 import time
 
+# Đọc biến môi trường
+SPREADSHEET_URL = os.environ.get("SPREADSHEET_URL")
+OKX_API_KEY = os.environ.get("OKX_API_KEY")
+OKX_API_SECRET = os.environ.get("OKX_API_SECRET")
+OKX_API_PASSPHRASE = os.environ.get("OKX_API_PASSPHRASE")
+
 # ✅ Cấu hình OKX
 exchange = ccxt.okx({
     "apiKey": os.getenv("OKX_API_KEY"),
@@ -13,10 +19,15 @@ exchange = ccxt.okx({
     "options": {"defaultType": "spot"},
 })
 
-# ✅ Đọc Google Sheet
-sheet_url = os.getenv("SPREADSHEET_URL")  # phải là link public
-sheet_csv_url = sheet_url.replace("/edit#gid=", "/export?format=csv&gid=")
-df = pd.read_csv(sheet_csv_url)
+def fetch_sheet():
+    try:
+        csv_url = SPREADSHEET_URL.replace("/edit#gid=", "/export?format=csv&gid=")
+        res = requests.get(csv_url)
+        res.raise_for_status()
+        return list(csv.reader(res.content.decode("utf-8").splitlines()))
+    except Exception as e:
+        logging.error(f"❌ Không thể tải Google Sheet: {e}")
+        return []
 
 # ✅ Định nghĩa hàm lấy tín hiệu TradingView
 def check_tradingview_signal(symbol: str) -> str:
