@@ -8,10 +8,10 @@ import ccxt
 import time
 import json
 
-json_path = "spot_entry_prices.json"
-if os.path.exists(json_path):
-    os.remove(json_path)
-    print("✅ Đã xoá file spot_entry_prices.json do nghi ngờ lỗi dữ liệu")
+# json_path = "spot_entry_prices.json"
+# if os.path.exists(json_path):
+#    os.remove(json_path)
+#    print("✅ Đã xoá file spot_entry_prices.json do nghi ngờ lỗi dữ liệu")
     
 # Cấu hình logging
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s:%(message)s")
@@ -224,8 +224,11 @@ spot_entry_prices_path = "spot_entry_prices.json"
 def load_entry_prices():
     try:
         with open(spot_entry_prices_path, "r") as f:
+            data = json.load(f)
+            logger.debug(f"📂 Giá mua load từ file: {data}")
             return json.load(f)
-    except Exception:
+    except Exception as e:
+        logger.warning(f"⚠️ Lỗi khi load spot_entry_prices.json: {e}")
         return {}
 
 # Lưu lại sau khi bán xong
@@ -265,9 +268,19 @@ def auto_sell_watcher():
 
                     # Phải có giá mua hợp lệ
                     entry_str = spot_entry_prices.get(symbol)
+                    logger.debug(f"📦 [DEBUG] entry_str cho {symbol}: {entry_str} ({type(entry_str)})")
                     try:
-                        if not entry_str or not isinstance(entry_str, (int, float, str)):
-                            logger.warning(f"⚠️ Không có giá mua hợp lệ cho {symbol}: '{entry_str}'")
+                        if not entry_str:
+                            logger.warning(f"⚠️ Không có giá mua cho {symbol}")
+                            continue
+                        
+                        # Nếu entry_str là dict (cũ), lấy ra giá
+                        if isinstance(entry_str, dict):
+                            entry_str = entry_str.get("price")
+                            logger.debug(f"📦 [DEBUG] Đã lấy giá từ dict cho {symbol}: {entry_str}")
+                        
+                        if not isinstance(entry_str, (int, float, str)):
+                            logger.warning(f"⚠️ entry_str cho {symbol} không hợp lệ: {entry_str}")
                             continue
                         
                         try:
