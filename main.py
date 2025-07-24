@@ -4,6 +4,13 @@ import pandas as pd
 from datetime import datetime
 from tradingview_ta import TA_Handler, Interval
 
+# Logging setup
+logging.basicConfig(
+    level=logging.DEBUG,  # thay vì DEBUG/INFO
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    stream=sys.stdout
+)
+
 # --- Load biến môi trường ---
 SPREADSHEET_URL = os.environ.get("SPREADSHEET_URL")
 OKX_API_KEY = os.environ.get("OKX_API_KEY")
