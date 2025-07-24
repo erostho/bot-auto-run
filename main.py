@@ -31,7 +31,6 @@ exchange = ccxt.okx({
     'options': {'defaultType': 'spot'}
 })
 exchange.load_markets()
-
 # --- Đọc Google Sheet public (CSV) ---
 try:
     df = pd.read_csv(SPREADSHEET_URL)
@@ -79,19 +78,21 @@ for i, row in df.iterrows():
             print(f"⚠️ Lỗi thời gian cho {coin}, bỏ qua")
             continue
 
-        symbol_spot = coin.upper().replace("/", "-")
+        symbol_spot = f"{coin.upper()}/USDT"
         market = exchange.markets.get(symbol_spot)
-        
         if not market:
-            print(f"⚠️ {symbol_spot} KHÔNG tìm thấy trong exchange.markets")
-            
-            # Gợi ý các symbol gần giống
-            similar = [s for s in exchange.markets.keys() if coin.split("/")[0].upper() in s]
-            print(f"🔍 Gợi ý symbol gần giống: {similar}")
-            continue
+            # Thử lại với định dạng PEPE-USDT nếu dạng / không có
+            alt_symbol = symbol_spot.replace("/", "-")
+            market = exchange.markets.get(alt_symbol)
+            if market:
+                print(f"🔁 Đổi qua symbol: {alt_symbol}")
+                symbol_spot = alt_symbol
         
-        if not market.get("spot"):
-            print(f"⚠️ {symbol_spot} TỒN TẠI nhưng KHÔNG PHẢI SPOT trên OKX")
+        if not market or market.get("spot") != True:
+            print(f"⚠️ {symbol_spot} KHÔNG tìm thấy trong exchange.markets")
+            # Gợi ý các symbol gần giống để debug
+            suggestions = [s for s in exchange.markets.keys() if coin.upper() in s and "USDT" in s]
+            print(f"👉 Gợi ý symbol gần giống: {suggestions}")
             continue
         
         # ✅ Nếu qua được thì là SPOT hợp lệ
