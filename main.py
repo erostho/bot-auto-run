@@ -223,8 +223,13 @@ def run_bot():
                     logger.error(f"❌ Lỗi khi mua {symbol} theo SIDEWAY: {e}")
         except Exception as e:
             logger.error(f"❌ Lỗi khi xử lý dòng {i} - {row}: {e}")
+# Gọi thread auto bán sau run_bot
 if __name__ == "__main__":
+    threading.Thread(target=auto_sell_watcher, daemon=True).start()
     run_bot()
+    # ✅ Giữ chương trình sống (để thread không bị kill)
+    while True:
+        time.sleep(60)
 
 spot_entry_prices_path = "spot_entry_prices.json"
 def auto_sell_watcher():
@@ -301,10 +306,3 @@ def auto_sell_watcher():
 
         time.sleep(180)
 
-# Gọi thread auto bán sau run_bot
-if __name__ == "__main__":
-    threading.Thread(target=auto_sell_watcher, daemon=True).start()
-    run_bot()
-    # ✅ Giữ chương trình sống (để thread không bị kill)
-    while True:
-        time.sleep(60)
