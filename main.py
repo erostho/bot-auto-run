@@ -168,11 +168,6 @@ for i, row in df.iterrows():
         except Exception as e:
             print(f"❌ Lỗi MUA {symbol}: {e}")
             continue
-
-        # Tạo lệnh bán
-        order = exchange.create_market_sell_order(symbol, amount)
-        print(f"🍑 ĐÃ BÁN {symbol} {amount:.6f} giá ~{current_price:.4f}")
-
     except Exception as e:
         print(f"⚠️ Lỗi bán {coin}: {e}")
 
