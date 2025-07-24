@@ -132,7 +132,7 @@ def run_bot():
             trend = get_short_term_trend(symbol)
             logger.info(f"📈 Xu hướng ngắn hạn của {symbol} = {trend}")
 
-            if trend != "TĂNG":
+            if trend not in ["TĂNG", "SIDEWAY"]:
                 logger.info(f"❌ Bỏ qua {symbol} vì xu hướng ngắn hạn = {trend}")
                 continue
 
