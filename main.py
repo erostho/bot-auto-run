@@ -77,8 +77,9 @@ for i, row in df.iterrows():
         except:
             print(f"⚠️ Lỗi thời gian cho {coin}, bỏ qua")
             continue
-
-        symbol_spot = f"{coin.upper()}/USDT"
+        # ✅ Chuẩn hóa tên coin: bỏ đuôi -USDT nếu có, viết hoa
+        coin = coin.upper().replace("-USDT", "").replace("/USDT", "")
+        symbol_spot = f"{coin}/USDT"
         market = exchange.markets.get(symbol_spot)
         if not market:
             # Thử lại với định dạng PEPE-USDT nếu dạng / không có
