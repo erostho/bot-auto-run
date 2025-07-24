@@ -68,33 +68,29 @@ def run_bot():
                 continue
 
             # ✅ Gửi tín hiệu check TradingView trực tiếp
-            symbol_tv = symbol.replace("-", "").upper()
-            url = "https://scanner.tradingview.com/crypto/scan"
-            payload = {
-                "symbols": {"tickers": [f"OKX:{symbol_tv}"], "query": {"types": []}},
-                "columns": ["recommendation"]
-            }
-
-            logger.debug(f"📡 Gửi request TV: {payload}")
             try:
+                tv_symbol = normalize_tv_symbol(symbol)
+                url = "https://scanner.tradingview.com/crypto/scan"
+                payload = {
+                    "symbols": {"tickers": [tv_symbol]},
+                    "columns": ["recommendation"]
+                }
+        
+                logging.debug(f"📡 Gửi request TV cho {symbol} → {tv_symbol} với payload: {payload}")
                 res = requests.post(url, json=payload, timeout=5)
                 res.raise_for_status()
+        
                 data = res.json()
-                logger.debug(f"🎯 Phản hồi TV: {data}")
-
-                if not data.get("data") or not data["data"][0]["d"]:
-                    logger.info(f"❌ {symbol} bị loại do không có tín hiệu TV")
-                    continue
-
-                signal_tv = data["data"][0]["d"][0]
-                if signal_tv not in ["BUY", "STRONG_BUY"]:
-                    logger.info(f"❌ {symbol} bị loại do tín hiệu TV = {signal_tv}")
-                    continue
-                logger.info(f"✅ Tín hiệu TV OK: {symbol} = {signal_tv}")
-
+                logging.debug(f"📊 Phản hồi từ TradingView cho {tv_symbol}: {data}")
+        
+                if not data.get("data"):
+                    return None
+                return data["data"][0]["d"][0]
+        
             except Exception as e:
-                logger.warning(f"⚠️ Lỗi lấy tín hiệu TV cho {symbol}: {e}")
-                continue
+                logging.warning(f"⚠️ Lỗi lấy tín hiệu TV cho {symbol}: {e}")
+                return None
+
 
             # ✅ Mua SPOT
             usdt_amount = 10
