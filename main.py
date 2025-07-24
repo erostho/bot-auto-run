@@ -174,7 +174,7 @@ def run_bot():
             
                     logger.debug(f"📊 {symbol}: RSI = {rsi}, Volume = {vol}, SMA20 = {vol_sma20}")
             
-                    if rsi >= 45 or vol >= vol_sma20:
+                    if rsi >= 55 or vol >= vol_sma20:
                         logger.info(f"⛔ {symbol} bị loại (SIDEWAY nhưng không nén đủ mạnh)")
                         continue
             
