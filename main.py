@@ -34,9 +34,16 @@ exchange = ccxt.okx({
     }
 })
 
-spot_entry_prices = {}  # ✅ khai báo biến toàn cục
-spot_entry_prices_path = "spot_entry_prices.json"
-
+def load_entry_prices():
+    spot_entry_prices = {}  # ✅ khai báo biến toàn cục
+    spot_entry_prices_path = "spot_entry_prices.json"
+    try:
+        with open(spot_entry_prices_path, "r") as f:
+            return json.load(f)
+    except Exception as e:
+        logging.error(f"❌ Lỗi khi load spot_entry_prices: {e}")
+        return {}
+        
 def auto_sell_watcher():
     logging.info("🟢 [AUTO SELL WATCHER] Đã khởi động luồng kiểm tra auto sell")
     spot_entry_prices = load_entry_prices()
