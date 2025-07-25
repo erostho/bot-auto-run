@@ -221,6 +221,7 @@ def run_bot():
             # ✅ Nếu trend là TĂNG → mua ngay (logic cũ)
             if trend == "TĂNG":
                 try:
+                    global spot_entry_prices
                     usdt_amount = 10
                     price = exchange.fetch_ticker(symbol)['last']
                     amount = round(usdt_amount / price, 6)
@@ -243,7 +244,6 @@ def run_bot():
                     order = exchange.create_market_buy_order(symbol, amount)
                     logger.info(f"✅ Đã mua {symbol} theo TĂNG: {order}")
                     # Giả sử sau khi vào lệnh mua thành công:
-                    global spot_entry_prices
                     spot_entry_prices[symbol] = {
                         "price": price,
                         "timestamp": datetime.utcnow().isoformat() + "Z"
@@ -257,6 +257,7 @@ def run_bot():
             # ✅ Nếu trend là SIDEWAY → kiểm tra thêm RSI và Volume
             if trend == "SIDEWAY":
                 try:
+                    global spot_entry_prices
                     ohlcv = exchange.fetch_ohlcv(symbol, timeframe="1h", limit=30)
                     closes = [c[4] for c in ohlcv]
                     volumes = [c[5] for c in ohlcv]
@@ -292,7 +293,6 @@ def run_bot():
                     order = exchange.create_market_buy_order(symbol, amount)
                     logger.info(f"✅ Đã mua {symbol} theo SIDEWAY: {order}")
                     # Giả sử sau khi vào lệnh mua thành công:
-                    global spot_entry_prices
                     spot_entry_prices[symbol] = {
                         "price": price,
                         "timestamp": datetime.utcnow().isoformat() + "Z"
