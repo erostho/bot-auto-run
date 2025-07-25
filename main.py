@@ -48,11 +48,15 @@ spot_entry_prices = {}  # ✅ khai báo biến toàn cục
 spot_entry_prices_path = "spot_entry_prices.json"
 
 def load_entry_prices():
+    spot_entry_prices_path = "spot_entry_prices.json"
     try:
+        if not os.path.exists(spot_entry_prices_path):
+            logger.warning(f"⚠️ File {spot_entry_prices_path} KHÔNG tồn tại! => Trả về dict rỗng.")
+            return {}
         with open(spot_entry_prices_path, "r") as f:
             return json.load(f)
     except Exception as e:
-        logging.error(f"❌ Lỗi khi load spot_entry_prices: {e}")
+        logger.error(f"❌ Lỗi khi load {spot_entry_prices_path}: {e}")
         return {}
         
 def save_entry_prices(prices_dict):
