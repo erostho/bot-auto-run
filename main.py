@@ -34,9 +34,10 @@ exchange = ccxt.okx({
     }
 })
 
+spot_entry_prices = {}  # ✅ khai báo biến toàn cục
+spot_entry_prices_path = "spot_entry_prices.json"
+
 def load_entry_prices():
-    spot_entry_prices = {}  # ✅ khai báo biến toàn cục
-    spot_entry_prices_path = "spot_entry_prices.json"
     try:
         with open(spot_entry_prices_path, "r") as f:
             return json.load(f)
