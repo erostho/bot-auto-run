@@ -84,42 +84,46 @@ def auto_sell_watcher():
                     entry_time_str = None
                     entry_time = None
                     
-                    # Lấy entry từ dict giá mua
                     entry_data = spot_entry_prices.get(symbol)
-                    logger.debug(f"📦 [DEBUG] entry_str cho {symbol}: {entry_data} ({type(entry_data)})")
+                    logger.debug(f"📦 [DEBUG] entry_data cho {symbol}: {entry_data} (type={type(entry_data)})")
                     
                     if not entry_data:
                         logger.warning(f"⚠️ Không có giá mua cho {symbol}")
                         continue
                     
+                    # Nếu là dict => tách price và timestamp
                     if isinstance(entry_data, dict):
                         entry_price = entry_data.get("price")
                         entry_time_str = entry_data.get("timestamp")
-                        logger.debug(f"📦 [DEBUG] Đã lấy giá từ dict cho {symbol}: {entry_price}, timestamp: {entry_time_str}")
+                        logger.debug(f"📦 [DEBUG] entry_price = {entry_price}, entry_time_str = {entry_time_str}")
                     else:
-                        entry_price = entry_data  # Trường hợp cũ: chỉ lưu số float
+                        entry_price = entry_data
+                        logger.debug(f"📦 [DEBUG] entry_data không phải dict => entry_price = {entry_price}")
                     
-                    # Parse timestamp nếu có
+                    # Parse thời gian nếu là string ISO
                     if isinstance(entry_time_str, str):
                         try:
-                            # Nếu là chuỗi ISO có "Z" thì loại bỏ để parse
-                            entry_time = datetime.fromisoformat(entry_time_str.replace("Z", ""))
+                            # Loại bỏ 'Z' nếu có, rồi convert về datetime
+                            entry_time_str_clean = entry_time_str.replace("Z", "")
+                            entry_time = datetime.fromisoformat(entry_time_str_clean)
+                            logger.debug(f"📅 [DEBUG] Đã parse được entry_time cho {symbol}: {entry_time}")
                         except Exception as e:
-                            logger.warning(f"⚠️ Không thể parse timestamp: {entry_time_str} - {e}")
+                            logger.warning(f"⚠️ Không thể parse timestamp cho {symbol}: {entry_time_str} ({type(entry_time_str)}), lỗi: {e}")
                             entry_time = None
                     else:
+                        if entry_time_str is not None:
+                            logger.warning(f"⚠️ datetime không phải string cho {symbol}: {entry_time_str} ({type(entry_time_str)})")
                         entry_time = None
                     
-                    # Kiểm tra kiểu entry_price hợp lệ
+                    # Kiểm tra kiểu giá mua
                     if not isinstance(entry_price, (int, float, str)):
-                        logger.warning(f"⚠️ entry_str cho {symbol} không hợp lệ: {entry_price}")
+                        logger.warning(f"⚠️ entry_price không hợp lệ cho {symbol}: {entry_price} ({type(entry_price)})")
                         continue
                     
-                    # Convert entry_price về float nếu cần
                     try:
                         entry_price = float(entry_price)
                     except ValueError:
-                        logger.warning(f"⚠️ Không thể convert giá mua {entry_price} thành float cho {symbol}")
+                        logger.warning(f"⚠️ Không thể convert entry_price sang float cho {symbol}: {entry_price}")
                         continue
                     
 
