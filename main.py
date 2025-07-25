@@ -14,9 +14,19 @@ import json
 #    print("✅ Đã xoá file spot_entry_prices.json do nghi ngờ lỗi dữ liệu")
     
 # Cấu hình logging
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s:%(message)s")
-logger = logging.getLogger()
+# logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s:%(message)s")
+# logger = logging.getLogger("AUTO_SELL")
+logger = logging.getLogger("AUTO_SELL")
+logger.setLevel(logging.DEBUG)  # Luôn bật DEBUG
 
+handler = logging.StreamHandler()
+handler.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+handler.setFormatter(formatter)
+
+if not logger.handlers:
+    logger.addHandler(handler)
 # Đọc biến môi trường
 SPREADSHEET_URL = os.environ.get("SPREADSHEET_URL")
 OKX_API_KEY = os.environ.get("OKX_API_KEY")
