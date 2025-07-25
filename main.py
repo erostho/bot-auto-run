@@ -44,6 +44,13 @@ def load_entry_prices():
         logging.error(f"❌ Lỗi khi load spot_entry_prices: {e}")
         return {}
         
+def save_entry_prices(prices_dict):
+    try:
+        with open(spot_entry_prices_path, "w") as f:
+            json.dump(prices_dict, f, indent=2)
+    except Exception as e:
+        logger.error(f"❌ Lỗi khi lưu file spot_entry_prices.json: {e}")
+        
 def auto_sell_watcher():
     logging.info("🟢 [AUTO SELL WATCHER] Đã khởi động luồng kiểm tra auto sell")
     spot_entry_prices = load_entry_prices()
@@ -82,10 +89,19 @@ def auto_sell_watcher():
 
                     if isinstance(entry_data, dict):
                         entry_price = entry_data.get("price")
+                        entry_time_str = entry_data.get("timestamp")
                         logger.debug(f"📦 [DEBUG] Đã lấy giá từ dict cho {symbol}: {entry_price}")
                     else:
                         entry_price = entry_data
-
+                    if isinstance(entry_time_str, str):
+                        try:
+                            # Nếu là chuỗi ISO, loại bỏ chữ "Z" nếu có, rồi convert về datetime
+                            entry_time = datetime.fromisoformat(entry_time_str.replace("Z", ""))
+                        except Exception as e:
+                            logger.warning(f"⚠️ Không thể parse timestamp: {entry_time_str} - {e}")
+                            entry_time = None
+                    else:
+                        entry_time = None
                     if not isinstance(entry_price, (int, float, str)):
                         logger.warning(f"⚠️ entry_str cho {symbol} không hợp lệ: {entry_price}")
                         continue
