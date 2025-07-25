@@ -79,39 +79,49 @@ def auto_sell_watcher():
                         continue
 
                     current_price = tickers[symbol]['last']
-
+                    # Khởi tạo mặc định
+                    entry_price = None
+                    entry_time_str = None
+                    entry_time = None
+                    
                     # Lấy entry từ dict giá mua
                     entry_data = spot_entry_prices.get(symbol)
                     logger.debug(f"📦 [DEBUG] entry_str cho {symbol}: {entry_data} ({type(entry_data)})")
-
+                    
                     if not entry_data:
                         logger.warning(f"⚠️ Không có giá mua cho {symbol}")
                         continue
-
+                    
                     if isinstance(entry_data, dict):
                         entry_price = entry_data.get("price")
                         entry_time_str = entry_data.get("timestamp")
-                        logger.debug(f"📦 [DEBUG] Đã lấy giá từ dict cho {symbol}: {entry_price}")
+                        logger.debug(f"📦 [DEBUG] Đã lấy giá từ dict cho {symbol}: {entry_price}, timestamp: {entry_time_str}")
                     else:
-                        entry_price = entry_data
+                        entry_price = entry_data  # Trường hợp cũ: chỉ lưu số float
+                    
+                    # Parse timestamp nếu có
                     if isinstance(entry_time_str, str):
                         try:
-                            # Nếu là chuỗi ISO, loại bỏ chữ "Z" nếu có, rồi convert về datetime
+                            # Nếu là chuỗi ISO có "Z" thì loại bỏ để parse
                             entry_time = datetime.fromisoformat(entry_time_str.replace("Z", ""))
                         except Exception as e:
                             logger.warning(f"⚠️ Không thể parse timestamp: {entry_time_str} - {e}")
                             entry_time = None
                     else:
                         entry_time = None
+                    
+                    # Kiểm tra kiểu entry_price hợp lệ
                     if not isinstance(entry_price, (int, float, str)):
                         logger.warning(f"⚠️ entry_str cho {symbol} không hợp lệ: {entry_price}")
                         continue
-
+                    
+                    # Convert entry_price về float nếu cần
                     try:
                         entry_price = float(entry_price)
                     except ValueError:
                         logger.warning(f"⚠️ Không thể convert giá mua {entry_price} thành float cho {symbol}")
                         continue
+                    
 
                     target_price = entry_price * 1.1
 
