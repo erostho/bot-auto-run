@@ -36,10 +36,10 @@ exchange = ccxt.okx({
 
 spot_entry_prices = {}  # ✅ khai báo biến toàn cục
 spot_entry_prices_path = "spot_entry_prices.json"
-def auto_sell_watcher():
-    global spot_entry_prices
-    spot_entry_prices = load_entry_prices()
 
+def auto_sell_watcher():
+    logging.info("🟢 [AUTO SELL WATCHER] Đã khởi động luồng kiểm tra auto sell")
+    spot_entry_prices = load_entry_prices()
     while True:
         try:
             logger.info("🔁 [AUTO SELL] Kiểm tra ví SPOT để chốt lời...")
@@ -301,8 +301,6 @@ def run_bot():
         except Exception as e:
             logger.error(f"❌ Lỗi khi xử lý dòng {i} - {row}: {e}")
 # Gọi thread auto bán sau run_bot
-import threading
-
 if __name__ == "__main__":
     logger.info("🚀 Khởi động bot SPOT OKX")
     
