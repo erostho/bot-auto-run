@@ -328,14 +328,15 @@ def main():
 
     print(f"🕒 Bắt đầu lúc {now.isoformat()}")
 
-    # ✅ Luôn chạy auto_sell
-    auto_sell_once()
-
     # ✅ Chỉ chạy run_bot nếu phút hiện tại chia hết 60 (ví dụ: 00:00, 01:00, 02:00...)
     if minute == 0:
         run_bot()
     else:
         print(f"⏳ Chưa đến thời điểm chạy run_bot(), phút hiện tại = {minute}")
-
+        
+    # ✅ Luôn chạy auto_sell
+    logger.info("🟢 Bắt đầu chạy auto_sell_once() từ main()")
+    auto_sell_once()
+    
 if __name__ == "__main__":
     main()
