@@ -62,6 +62,7 @@ def save_entry_prices(prices_dict):
         logger.error(f"❌ Lỗi khi lưu file spot_entry_prices.json: {e}")
         
 def load_entry_prices():
+    global spot_entry_prices
     try:
         if not os.path.exists(spot_entry_prices_path):
             logger.warning(f"⚠️ File {spot_entry_prices_path} KHÔNG tồn tại! => Trả về dict rỗng.")
@@ -85,7 +86,6 @@ def auto_sell_watcher():
             logger.info("🔁 [AUTO SELL] Kiểm tra ví SPOT để chốt lời...")
             balances = exchange.fetch_balance()
             tickers = exchange.fetch_tickers()
-
             updated_prices = spot_entry_prices.copy()
 
             for coin, balance_data in balances.items():
@@ -110,7 +110,9 @@ def auto_sell_watcher():
                     entry_time = None
                     
                     entry_data = spot_entry_prices.get(symbol)
-                    logger.debug(f"📦 [DEBUG] entry_data cho {symbol}: {entry_data} (type={type(entry_data)})")
+                    if not isinstance(entry_data, dict):
+                        logger.warning(f"⚠️ {symbol} entry_data KHÔNG phải dict (giá cũ kiểu số?): {entry_data}")
+                        continue
                     
                     if not entry_data:
                         logger.warning(f"⚠️ Không có giá mua cho {symbol}")
