@@ -298,6 +298,8 @@ def run_bot():
                     order = exchange.create_market_buy_order(symbol, amount)
                     logger.info(f"✅ Đã mua {symbol} theo TĂNG: {order}")
                     # Giả sử sau khi vào lệnh mua thành công:
+                    # 🔧 Thêm dòng này để đảm bảo không ghi đè file rỗng
+                    spot_entry_prices = load_entry_prices()  # <<< thêm dòng này
                     spot_entry_prices[symbol] = {
                         "price": price,
                         "timestamp": datetime.utcnow().isoformat() + "Z"
@@ -346,12 +348,13 @@ def run_bot():
                     order = exchange.create_market_buy_order(symbol, amount)
                     logger.info(f"✅ Đã mua {symbol} theo SIDEWAY: {order}")
                     # Giả sử sau khi vào lệnh mua thành công:
+                    # 🔧 Thêm dòng này để đảm bảo không ghi đè file rỗng
+                    spot_entry_prices = load_entry_prices()  # <<< thêm dòng này
                     spot_entry_prices[symbol] = {
                         "price": price,
                         "timestamp": datetime.utcnow().isoformat() + "Z"
                     }
-                    save_entry_prices(spot_entry_prices)
-                    
+                    save_entry_prices(spot_entry_prices)  
                 except Exception as e:
                     logger.error(f"❌ Lỗi khi mua {symbol} theo SIDEWAY: {e}")            
         except Exception as e:
