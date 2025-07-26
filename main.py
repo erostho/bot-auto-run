@@ -163,7 +163,7 @@ def auto_sell_watcher():
         except Exception as e:
             logger.error(f"❌ Lỗi AUTO SELL: {e}")
 
-        time.sleep(180)
+        time.sleep(250)
         
 def fetch_sheet():
     try:
