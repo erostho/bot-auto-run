@@ -57,12 +57,6 @@ def load_entry_prices():
         
 def save_entry_prices(prices_dict):
     try:
-        # ✅ Nếu file chưa tồn tại thì tạo file rỗng trước
-        if not os.path.exists(spot_entry_prices_path):
-            with open(spot_entry_prices_path, "w") as f_init:
-                json.dump({}, f_init)
-                logger.warning("⚠️ File spot_entry_prices.json chưa có => Đã tạo mới rỗng.")
-
         # ✅ Ghi dict vào file
         with open(spot_entry_prices_path, "w") as f:
             json.dump(prices_dict, f, indent=2)
