@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, timezone
-import threading
 import os
 import csv
 import requests
@@ -63,14 +62,12 @@ def load_entry_prices():
         logger.error(f"❌ Lỗi khi load {spot_entry_prices_path}: {e}")
         return {}
         
-def auto_sell_watcher():
+def auto_sell_once():
     global spot_entry_prices
     logging.info("🟢 [AUTO SELL WATCHER] Đã khởi động luồng kiểm tra auto sell")
     new_data = load_entry_prices()
     if new_data:
         spot_entry_prices.update(new_data)
-
-    while True:
         try:
             logger.info("🔁 [AUTO SELL] Kiểm tra ví SPOT để chốt lời...")
 
@@ -127,10 +124,9 @@ def auto_sell_watcher():
                         # exchange.create_market_sell_order(symbol, balance)
                 except Exception as e:
                     logger.error(f"❌ Lỗi khi xử lý coin {coin}: {e}")
-            time.sleep(250)
         except Exception as e:
             logger.error(f"❌ Lỗi chính trong auto_sell_watcher: {e}")
-            time.sleep(250)
+
         
 def fetch_sheet():
     try:
@@ -324,18 +320,22 @@ def run_bot():
                     logger.error(f"❌ Lỗi khi mua {symbol} theo SIDEWAY: {e}")            
         except Exception as e:
             logger.error(f"❌ Lỗi khi xử lý dòng {i} - {row}: {e}")
-if __name__ == "__main__":
-    logger.info("🚀 Khởi động bot SPOT OKX")
-    
-    # ✅ Khởi động thread trước
-    threading.Thread(target=auto_sell_watcher, daemon=True).start()
-    logging.info("✅ Đã tạo thread auto_sell_watcher")
-    
-    # Gọi bot mua SPOT như bình thường
-    run_bot()
-    logger.info("✅ Đã chạy xong hàm run_bot(), chuẩn bị chuyển sang auto_sell_watcher()...")
-    
-    # ✅ Giữ chương trình sống (để thread không bị kill)
-    while True:
-        time.sleep(60)
 
+def main():
+    now = datetime.utcnow()
+    minute = now.minute
+    hour = now.hour
+
+    print(f"🕒 Bắt đầu lúc {now.isoformat()}")
+
+    # ✅ Luôn chạy auto_sell
+    auto_sell_once()
+
+    # ✅ Chỉ chạy run_bot nếu phút hiện tại chia hết 60 (ví dụ: 00:00, 01:00, 02:00...)
+    if minute == 0:
+        run_bot()
+    else:
+        print(f"⏳ Chưa đến thời điểm chạy run_bot(), phút hiện tại = {minute}")
+
+if __name__ == "__main__":
+    main()
