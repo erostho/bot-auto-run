@@ -291,7 +291,7 @@ def run_bot():
                     price_3bars_ago = closes[-4]
                     price_change = (price_now - price_3bars_ago) / price_3bars_ago * 100
                     
-                    if rsi > 70 or vol > vol_sma20 * 2 or price_change > 25:
+                    if rsi > 70 or vol > vol_sma20 * 2 or price_change > 10:
                         logger.info(f"⛔ {symbol} bị loại do FOMO trong trend TĂNG (RSI={rsi:.1f}, Δgiá 3h={price_change:.1f}%)")
                         continue
                     logger.info(f"💰 [TĂNG] Mua {amount} {symbol} với {usdt_amount} USDT (giá {price})")
