@@ -363,6 +363,6 @@ if __name__ == "__main__":
     threading.Thread(target=auto_sell_watcher, daemon=True).start()
     
     # ✅ Giữ chương trình sống (để thread không bị kill)
-    # while True:
-    #    time.sleep(60)
+    while True:
+        time.sleep(30)
 
