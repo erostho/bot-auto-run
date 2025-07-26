@@ -64,10 +64,11 @@ def load_entry_prices():
         return {}
         
 def auto_sell_watcher():
+    global spot_entry_prices
     logging.info("🟢 [AUTO SELL WATCHER] Đã khởi động luồng kiểm tra auto sell")
-    
-    spot_entry_prices.clear()
-    spot_entry_prices.update(load_entry_prices())
+    new_data = load_entry_prices()
+    if new_data:
+        spot_entry_prices.update(new_data)
 
     while True:
         try:
