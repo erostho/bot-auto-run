@@ -45,134 +45,113 @@ spot_entry_prices_path = "spot_entry_prices.json"
 
 def save_entry_prices(prices_dict):
     try:
-        # Nếu file chưa có thì tạo file rỗng
-        if not os.path.exists(spot_entry_prices_path):
-            with open(spot_entry_prices_path, "w") as f_init:
-                json.dump({}, f_init)
-                logger.warning(f"⚠️ File {spot_entry_prices_path} chưa có => Đã tạo mới rỗng.")
-
-        # ✅ In nội dung sẽ ghi vào file để kiểm tra
-        logger.debug(f"💾 Ghi dữ liệu vào file {spot_entry_prices_path}: {json.dumps(prices_dict, indent=2)}")
-
-        # Ghi dict vào file JSON
         with open(spot_entry_prices_path, "w") as f:
             json.dump(prices_dict, f, indent=2)
-
+        logger.debug(f"💾 Đã ghi file spot_entry_prices.json: {prices_dict}")
     except Exception as e:
         logger.error(f"❌ Lỗi khi lưu file spot_entry_prices.json: {e}")
         
 def load_entry_prices():
-    global spot_entry_prices
+    if not os.path.exists(spot_entry_prices_path):
+        logger.warning("⚠️ File spot_entry_prices.json KHÔNG tồn tại! => Trả về dict rỗng")
+        return {}
+
     try:
-        if not os.path.exists(spot_entry_prices_path):
-            logger.warning(f"⚠️ File {spot_entry_prices_path} KHÔNG tồn tại! => Trả về dict rỗng.")
-            return {}
         with open(spot_entry_prices_path, "r") as f:
-            return json.load(f)
+            data = json.load(f)
+
+            if not isinstance(data, dict):
+                logger.warning("⚠️ Dữ liệu trong spot_entry_prices.json KHÔNG phải dict => Trả về dict rỗng")
+                return {}
+
+            logger.debug(f"📥 Đã load spot_entry_prices.json: {data}")
+            return data
     except Exception as e:
-        logger.error(f"❌ Lỗi khi load {spot_entry_prices_path}: {e}")
+        logger.error(f"❌ Lỗi khi đọc file spot_entry_prices.json: {e}")
         return {}
         
 def auto_sell_watcher():
-    global spot_entry_prices
-    logging.info("🟢 [AUTO SELL WATCHER] Đã khởi động luồng kiểm tra auto sell")
-
-    # ❗ KHÔNG gán = load_entry_prices() nữa
-    spot_entry_prices.clear()
-    spot_entry_prices.update(load_entry_prices())
+    logger.info("🌀 BẮT ĐẦU theo dõi auto sell mỗi 3 phút...")
 
     while True:
         try:
-            logger.info("🔁 [AUTO SELL] Kiểm tra ví SPOT để chốt lời...")
-            balances = exchange.fetch_balance()
-            tickers = exchange.fetch_tickers()
-            updated_prices = spot_entry_prices.copy()
+            # Load entry prices từ file
+            spot_entry_prices.clear()
+            entry_loaded = load_entry_prices()
+            if isinstance(entry_loaded, dict):
+                spot_entry_prices.update(entry_loaded)
+            else:
+                logger.warning("⚠️ File entry_prices.json KHÔNG chứa dict. Bỏ qua cập nhật.")
 
-            for coin, balance_data in balances.items():
-                try:
-                    if not isinstance(balance_data, dict):
-                        logger.warning(f"⚠️ {coin} không phải dict: {balance_data}")
-                        continue
+            balances = exchange.fetch_balance()['total']
 
-                    balance = balance_data.get("total", 0)
-                    if not balance or balance <= 0:
-                        continue
+            for symbol, amount in balances.items():
+                if not symbol.endswith("USDT"):
+                    continue
 
-                    logger.debug(f"🧮 [AUTO SELL] Xét coin: {coin} | Số dư: {balance}")
-                    symbol = f"{coin}-USDT"
-                    if symbol not in tickers:
-                        continue
+                if amount is None or amount == 0:
+                    continue
 
-                    current_price = tickers[symbol]['last']
-                    # Khởi tạo mặc định
-                    entry_price = None
-                    entry_time_str = None
-                    entry_time = None
-                    
-                    entry_data = spot_entry_prices.get(symbol)
-                    if not isinstance(entry_data, dict):
-                        logger.warning(f"⚠️ {symbol} entry_data KHÔNG phải dict (giá cũ kiểu số?): {entry_data}")
-                        continue
-                    
-                    if not entry_data:
-                        logger.warning(f"⚠️ Không có giá mua cho {symbol}")
-                        continue
-                    
-                    # Nếu là dict => tách price và timestamp
-                    if isinstance(entry_data, dict):
-                        entry_price = entry_data.get("price")
-                        entry_time_str = entry_data.get("timestamp")
-                        logger.debug(f"📦 [DEBUG] entry_price = {entry_price}, entry_time_str = {entry_time_str}")
-                    else:
-                        entry_price = entry_data
-                        logger.debug(f"📦 [DEBUG] entry_data không phải dict => entry_price = {entry_price}")
-                    
-                    # Parse thời gian nếu là string ISO
-                    if isinstance(entry_time_str, str):
-                        try:
-                            # Loại bỏ 'Z' nếu có, rồi convert về datetime
-                            entry_time_str_clean = entry_time_str.replace("Z", "")
-                            entry_time = datetime.fromisoformat(entry_time_str_clean)
-                            logger.debug(f"📅 [DEBUG] Đã parse được entry_time cho {symbol}: {entry_time}")
-                        except Exception as e:
-                            logger.warning(f"⚠️ Không thể parse timestamp cho {symbol}: {entry_time_str} ({type(entry_time_str)}), lỗi: {e}")
-                            entry_time = None
-                    else:
-                        if entry_time_str is not None:
-                            logger.warning(f"⚠️ datetime không phải string cho {symbol}: {entry_time_str} ({type(entry_time_str)})")
-                        entry_time = None
-                    
-                    # Kiểm tra kiểu giá mua
-                    if not isinstance(entry_price, (int, float, str)):
-                        logger.warning(f"⚠️ entry_price không hợp lệ cho {symbol}: {entry_price} ({type(entry_price)})")
-                        continue
-                    
+                # Bỏ stablecoin
+                if symbol in ["USDT", "USDC", "DAI", "TUSD", "FDUSD"]:
+                    continue
+
+                entry_data = spot_entry_prices.get(symbol)
+
+                # ⚠️ Nếu dữ liệu cũ bị lỗi (không phải dict)
+                if not isinstance(entry_data, dict):
+                    logger.warning(f"⚠️ {symbol} entry_data KHÔNG phải dict: {entry_data} ({type(entry_data)})")
+                    continue
+
+                entry_price = entry_data.get("price")
+                entry_time_str = entry_data.get("timestamp")
+                logger.debug(f"📦 entry_price={entry_price}, entry_time_str={entry_time_str}")
+
+                # Kiểm tra timestamp đúng định dạng
+                entry_time = None
+                if isinstance(entry_time_str, str):
                     try:
-                        entry_price = float(entry_price)
-                    except ValueError:
-                        logger.warning(f"⚠️ Không thể convert entry_price sang float cho {symbol}: {entry_price}")
+                        clean_time = entry_time_str.replace("Z", "")
+                        entry_time = datetime.fromisoformat(clean_time)
+                        logger.debug(f"📅 entry_time của {symbol}: {entry_time}")
+                    except Exception as e:
+                        logger.warning(f"❌ Không parse được timestamp của {symbol}: {entry_time_str}, lỗi: {e}")
                         continue
-                    
+                else:
+                    logger.warning(f"⚠️ timestamp của {symbol} không phải string: {entry_time_str} ({type(entry_time_str)})")
+                    continue
 
-                    target_price = entry_price * 1.1
+                if entry_price is None:
+                    logger.warning(f"⚠️ Không có entry_price cho {symbol}")
+                    continue
 
-                    if current_price >= target_price:
-                        logger.info(f"🚀 BÁN {symbol}: giá hiện tại {current_price} > {target_price} (entry {entry_price})")
-                        order = exchange.create_market_sell_order(symbol, balance)
-                        logger.info(f"✅ Đã bán {symbol}: {order}")
-                        updated_prices.pop(symbol, None)
-                    else:
-                        logger.debug(f"⏳ {symbol} chưa đủ lời: {current_price} < {target_price}")
+                # Lấy giá thị trường hiện tại
+                ticker = exchange.fetch_ticker(symbol)
+                current_price = ticker.get("last")
 
-                except Exception as e:
-                    logger.warning(f"⚠️ Lỗi khi xử lý {coin}: {e}")
+                if current_price is None:
+                    logger.warning(f"⚠️ Không lấy được giá hiện tại của {symbol}")
+                    continue
 
-            save_entry_prices(updated_prices)
-            spot_entry_prices = updated_prices
+                pnl = (current_price - entry_price) / entry_price * 100
+                logger.info(f"📊 {symbol}: Giá mua {entry_price:.6f}, Giá hiện tại {current_price:.6f}, Lợi nhuận {pnl:.2f}%")
 
+                if pnl >= 10:
+                    logger.info(f"💰 {symbol} đạt lợi nhuận ≥ 10% ⇒ BÁN toàn bộ {amount}")
+                    try:
+                        order = exchange.create_market_sell_order(symbol, amount)
+                        logger.info(f"✅ Đã bán {symbol} với giá {current_price:.6f}, lệnh: {order}")
+                        # Xoá khỏi danh sách entry
+                        if symbol in spot_entry_prices:
+                            del spot_entry_prices[symbol]
+                            save_entry_prices(spot_entry_prices)
+                            logger.info(f"🗑 Đã xoá entry của {symbol} sau khi bán")
+                    except Exception as e:
+                        logger.error(f"❌ Lỗi khi bán {symbol}: {e}")
         except Exception as e:
-            logger.error(f"❌ Lỗi AUTO SELL: {e}")
+            logger.error(f"❌ Lỗi trong auto_sell_watcher: {e}")
 
+        logger.info("🕒 Đợi >4 phút để kiểm tra lại...")
         time.sleep(250)
         
 def fetch_sheet():
