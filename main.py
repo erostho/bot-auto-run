@@ -43,6 +43,20 @@ exchange = ccxt.okx({
 spot_entry_prices = {}  # ✅ khai báo biến toàn cục
 spot_entry_prices_path = "spot_entry_prices.json"
 
+def save_entry_prices(prices_dict):
+    try:
+        # Nếu file chưa có thì tạo trước để tránh lỗi race-condition
+        if not os.path.exists(spot_entry_prices_path):
+            with open(spot_entry_prices_path, "w") as f_init:
+                json.dump({}, f_init)
+                logger.warning(f"⚠️ File {spot_entry_prices_path} chưa có => Đã tạo mới rỗng.")
+
+        # Sau đó mới ghi đè data vào
+        with open(spot_entry_prices_path, "w") as f:
+            json.dump(prices_dict, f, indent=2)
+    except Exception as e:
+        logger.error(f"❌ Lỗi khi lưu file spot_entry_prices.json: {e}")
+        
 def load_entry_prices():
     try:
         if not os.path.exists(spot_entry_prices_path):
@@ -53,14 +67,6 @@ def load_entry_prices():
     except Exception as e:
         logger.error(f"❌ Lỗi khi load {spot_entry_prices_path}: {e}")
         return {}
-        
-def save_entry_prices(prices_dict):
-    try:
-        # ✅ Ghi dict vào file
-        with open(spot_entry_prices_path, "w") as f:
-            json.dump(prices_dict, f, indent=2)
-    except Exception as e:
-        logger.error(f"❌ Lỗi khi lưu file spot_entry_prices.json: {e}")
         
 def auto_sell_watcher():
     logging.info("🟢 [AUTO SELL WATCHER] Đã khởi động luồng kiểm tra auto sell")
