@@ -349,14 +349,15 @@ def run_bot():
 if __name__ == "__main__":
     logger.info("🚀 Khởi động bot SPOT OKX")
     
+    # ✅ Khởi động thread trước
+    threading.Thread(target=auto_sell_watcher, daemon=True).start()
+    logging.info("✅ Đã tạo thread auto_sell_watcher")
+    
     # Gọi bot mua SPOT như bình thường
     run_bot()
     logger.info("✅ Đã chạy xong hàm run_bot(), chuẩn bị chuyển sang auto_sell_watcher()...")
-        
-    # Gọi hàm auto_sell_watcher trong thread riêng
-    threading.Thread(target=auto_sell_watcher, daemon=True).start()
     
     # ✅ Giữ chương trình sống (để thread không bị kill)
     while True:
-        time.sleep(30)
+        time.sleep(60)
 
