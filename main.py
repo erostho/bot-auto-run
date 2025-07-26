@@ -64,7 +64,7 @@ def load_entry_prices():
         
 def auto_sell_once():
     global spot_entry_prices
-    logging.info("🟢 [AUTO SELL WATCHER] Đã khởi động luồng kiểm tra auto sell")
+    logging.info("🟢 [AUTO SELL once] Đã khởi động luồng kiểm tra auto sell")
     new_data = load_entry_prices()
     if new_data:
         spot_entry_prices.update(new_data)
@@ -116,9 +116,9 @@ def auto_sell_once():
                         logger.warning(f"⚠️ {symbol} entry_price không phải số: {entry_price}")
                         continue
 
-                    # 💰 Logic chốt lời nếu tăng >10%
+                    # 💰 Logic chốt lời nếu tăng >20%
                     percent_gain = ((current_price - entry_price) / entry_price) * 100
-                    if percent_gain >= 10:
+                    if percent_gain >= 20:
                         logger.info(f"✅ CHỐT LỜI: {symbol} tăng {percent_gain:.2f}% từ giá {entry_price} => {current_price}")
                         # Gọi lệnh bán tại đây nếu cần
                         # exchange.create_market_sell_order(symbol, balance)
