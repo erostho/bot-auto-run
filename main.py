@@ -45,15 +45,19 @@ spot_entry_prices_path = "spot_entry_prices.json"
 
 def save_entry_prices(prices_dict):
     try:
-        # Nếu file chưa có thì tạo trước để tránh lỗi race-condition
+        # Nếu file chưa có thì tạo file rỗng
         if not os.path.exists(spot_entry_prices_path):
             with open(spot_entry_prices_path, "w") as f_init:
                 json.dump({}, f_init)
                 logger.warning(f"⚠️ File {spot_entry_prices_path} chưa có => Đã tạo mới rỗng.")
 
-        # Sau đó mới ghi đè data vào
+        # ✅ In nội dung sẽ ghi vào file để kiểm tra
+        logger.debug(f"💾 Ghi dữ liệu vào file {spot_entry_prices_path}: {json.dumps(prices_dict, indent=2)}")
+
+        # Ghi dict vào file JSON
         with open(spot_entry_prices_path, "w") as f:
             json.dump(prices_dict, f, indent=2)
+
     except Exception as e:
         logger.error(f"❌ Lỗi khi lưu file spot_entry_prices.json: {e}")
         
