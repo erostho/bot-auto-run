@@ -75,7 +75,11 @@ def load_entry_prices():
 def auto_sell_watcher():
     global spot_entry_prices
     logging.info("🟢 [AUTO SELL WATCHER] Đã khởi động luồng kiểm tra auto sell")
-    spot_entry_prices = load_entry_prices()
+
+    # ❗ KHÔNG gán = load_entry_prices() nữa
+    spot_entry_prices.clear()
+    spot_entry_prices.update(load_entry_prices())
+
     while True:
         try:
             logger.info("🔁 [AUTO SELL] Kiểm tra ví SPOT để chốt lời...")
