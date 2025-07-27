@@ -77,51 +77,72 @@ def auto_sell_once():
         logging.warning("⚠️ Dữ liệu load từ JSON không phải dict!")
 
     try:
-        logging.info("🔎 [AUTO SELL] Kiểm tra ví SPOT để chốt lời...")
+        logging.info("🔄 [AUTO SELL] Kiểm tra ví SPOT để chốt lời...")
         balances = exchange.fetch_balance()
         tickers = exchange.fetch_tickers()
         updated_prices = spot_entry_prices.copy()
-
+        
+        # ✅ Lọc danh sách coin đang giữ trong ví SPOT
+        spot_coins = {
+            coin: float(data.get("total", 0))
+            for coin, data in balances.items()
+            if isinstance(data, dict) and float(data.get("total", 0)) > 0
+        }
+        logging.info(f"📊 Hiện có {len(spot_coins)} coin trong ví SPOT: {list(spot_coins.keys())}")
+        
+        # ✅ Duyệt từng coin trong balance
         for coin, balance_data in balances.items():
             try:
                 if not isinstance(balance_data, dict):
                     logger.warning(f"⚠️ {coin} không phải dict: {balance_data}")
                     continue
-
+        
                 balance = balance_data.get("total", 0)
                 if not balance or balance <= 0:
                     continue
-
+        
                 symbol = f"{coin}-USDT"
                 ticker = tickers.get(symbol)
                 if not ticker:
                     logger.warning(f"⚠️ Không có giá hiện tại cho {symbol}")
                     continue
-
+        
+                # Các bước xử lý tiếp theo...
                 current_price = ticker["last"]
                 entry_data = spot_entry_prices.get(symbol)
-
+                
+                # ✅ Kiểm tra dữ liệu entry_data phải là dict
                 if not isinstance(entry_data, dict):
                     logger.warning(f"⚠️ {symbol} entry_data KHÔNG phải dict: {entry_data}")
                     continue
-
+                
+                # ✅ Lấy giá mua ban đầu
                 entry_price = entry_data.get("price")
                 if not isinstance(entry_price, (int, float)):
                     logger.warning(f"⚠️ {symbol} entry_price không phải số: {entry_price}")
                     continue
-
+                
+                # ✅ Tính phần trăm lời
                 percent_gain = ((current_price - entry_price) / entry_price) * 100
+                
+                # ✅ Kiểm tra nếu đạt mức chốt lời
                 if percent_gain >= 20:
                     logger.info(f"✅ CHỐT LỜI: {symbol} tăng {percent_gain:.2f}% từ {entry_price} => {current_price}")
-                    # exchange.create_market_sell_order(symbol, balance)  # Hủy dòng này nếu đang test
+                
+                    # 👉 Gọi lệnh bán thật nếu muốn
+                    try:
+                        exchange.create_market_sell_order(symbol, balance)
+                        logger.info(f"💰 Đã bán {symbol} số lượng {balance} để chốt lời")
+                    except Exception as e:
+                        logger.error(f"❌ Lỗi khi bán {symbol}: {e}")
+                        continue
+                    # ✅ Sau khi bán xong, xoá coin khỏi danh sách theo dõi
                     updated_prices.pop(symbol, None)
-
-            except Exception as e:
-                logger.error(f"❌ Lỗi khi xử lý coin {coin}: {e}")
-
-        # Lưu lại file sau khi cập nhật
-        spot_entry_prices = updated_prices
-        save_entry_prices(spot_entry_prices)
+                    
+                    # 💾 Cập nhật biến toàn cục và lưu lại file
+                    spot_entry_prices = updated_prices
+                    save_entry_prices(spot_entry_prices)
+                    logger.debug(f"💾 Đã cập nhật spot_entry_prices: {json.dumps(spot_entry_prices, indent=2)}")
 
     except Exception as e:
         logger.error(f"❌ Lỗi chính trong auto_sell_once(): {e}")
