@@ -239,7 +239,7 @@ def run_bot():
             if trend == "TĂNG":
                 try:
                     usdt_amount = 10
-                    price = exchange.fetch_ticker(symbol)['last']
+                    price = float(exchange.fetch_ticker(symbol)['last']) # ép về float
                     amount = round(usdt_amount / price, 6)
                     # === CHỐNG FOMO (dành cho trend TĂNG) ===
                     ohlcv = exchange.fetch_ohlcv(symbol, timeframe="1h", limit=30)
