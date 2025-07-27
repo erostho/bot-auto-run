@@ -138,12 +138,12 @@ def auto_sell_once():
                         continue
                     # ✅ Sau khi bán xong, xoá coin khỏi danh sách theo dõi
                     updated_prices.pop(symbol, None)
-                    
-                    # 💾 Cập nhật biến toàn cục và lưu lại file
-                    spot_entry_prices = updated_prices
-                    save_entry_prices(spot_entry_prices)
-                    logger.debug(f"💾 Đã cập nhật spot_entry_prices: {json.dumps(spot_entry_prices, indent=2)}")
-
+            except Exception as e:
+                logger.error(f"❌ Lỗi khi xử lý coin {coin}: {e}")                       
+        # 💾 Cập nhật biến toàn cục và lưu lại file
+        spot_entry_prices = updated_prices
+        save_entry_prices(spot_entry_prices)
+        logger.debug(f"💾 Đã cập nhật spot_entry_prices: {json.dumps(spot_entry_prices, indent=2)}")
     except Exception as e:
         logger.error(f"❌ Lỗi chính trong auto_sell_once(): {e}")
 
