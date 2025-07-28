@@ -294,6 +294,7 @@ def run_bot():
                     usdt_amount = 10
                     price = float(exchange.fetch_ticker(symbol)['last']) # ép về float
                     amount = round(usdt_amount / price, 6)
+                    
                     # === CHỐNG FOMO (dành cho trend TĂNG) ===
                     ohlcv = exchange.fetch_ohlcv(symbol, timeframe="1h", limit=30)
                     closes = [c[4] for c in ohlcv]
@@ -306,7 +307,7 @@ def run_bot():
                     price_3bars_ago = closes[-4]
                     price_change = (price_now - price_3bars_ago) / price_3bars_ago * 100
                     
-                    if rsi > 70 or vol > vol_sma20 * 2 or price_change > 10:
+                    if rsi > 70 or vol > vol_sma20 * 2 or price_change > 20:
                         logger.info(f"⛔ {symbol} bị loại do FOMO trong trend TĂNG (RSI={rsi:.1f}, Δgiá 3h={price_change:.1f}%)")
                         continue
                     logger.info(f"💰 [TĂNG] Mua {amount} {symbol} với {usdt_amount} USDT (giá {price})")
@@ -339,8 +340,9 @@ def run_bot():
                     price_now = closes[-1]
                     price_3bars_ago = closes[-4]
                     price_change = (price_now - price_3bars_ago) / price_3bars_ago * 100
+                    
                     # Nếu có dấu hiệu FOMO thì bỏ qua
-                    if rsi > 70 or vol > vol_sma20 * 2 or price_change > 10:
+                    if rsi > 70 or vol > vol_sma20 * 2 or price_change > 20:
                         logger.info(f"⛔ {symbol} bị loại do dấu hiệu FOMO (RSI={rsi:.2f}, Δgiá 3h={price_change:.1f}%, vol={vol:.0f})")
                         continue
                     if len(closes) < 20:
