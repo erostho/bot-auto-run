@@ -128,7 +128,7 @@ def auto_sell_once():
                 # ✅ Tính phần trăm lời
                 percent_gain = ((current_price - entry_price) / entry_price) * 100
                 # ✅ Kiểm tra nếu đạt mức chốt lời, Sau khi bán xong, xoá coin khỏi danh sách theo dõi
-                 was_updated = False  # ✅ Thêm biến cờ theo dõi
+                was_updated = False  # ✅ Thêm biến cờ theo dõi
                 if percent_gain >= 20:
                     logger.info(f"✅ CHỐT LỜI: {symbol} tăng {percent_gain:.2f}% từ {entry_price} => {current_price}")
                     try:
