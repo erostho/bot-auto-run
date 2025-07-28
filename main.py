@@ -42,16 +42,6 @@ exchange = ccxt.okx({
 spot_entry_prices = {}  # ✅ khai báo biến toàn cục
 spot_entry_prices_path = "spot_entry_prices.json"
 
-def save_entry_prices(prices_dict):
-    try:
-        with open("spot_entry_prices.json", "w") as f:
-            json.dump(prices_dict, f, indent=2)
-            f.flush()  # 🔁 Đảm bảo ghi xong
-            os.fsync(f.fileno())  # 💾 Ghi ra đĩa thật (tránh ghi tạm vào cache)
-        logger.debug("💾 Đã ghi file spot_entry_prices.json xong.")
-        logger.debug(f"📦 Nội dung file: \n{json.dumps(prices_dict, indent=2)}")
-    except Exception as e:
-        logger.error(f"❌ Lỗi khi lưu file spot_entry_prices.json: {e}")
         
 def load_entry_prices():
     spot_entry_prices_path = "spot_entry_prices.json"
@@ -281,7 +271,8 @@ def run_bot():
                     order = exchange.create_market_buy_order(symbol, amount)
                     logger.info(f"✅ Đã mua {symbol} theo TĂNG: {order}")
                     # Giả sử sau khi vào lệnh mua thành công:
-                    # 🔧 Thêm dòng này để đảm bảo không ghi đè file rỗng
+                    # ✅ Load lại dữ liệu cũ để tránh mất dữ liệu các coin khác
+                    spot_entry_prices.update(load_entry_prices())
                     spot_entry_prices[symbol] = {
                         "price": price,
                         "timestamp": datetime.utcnow().isoformat() + "Z"
@@ -331,7 +322,8 @@ def run_bot():
                     order = exchange.create_market_buy_order(symbol, amount)
                     logger.info(f"✅ Đã mua {symbol} theo SIDEWAY: {order}")
                     # Giả sử sau khi vào lệnh mua thành công:
-
+                    # ✅ Load lại dữ liệu cũ để tránh mất dữ liệu các coin khác
+                    spot_entry_prices.update(load_entry_prices())
                     spot_entry_prices[symbol] = {
                         "price": price,
                         "timestamp": datetime.utcnow().isoformat() + "Z"
@@ -342,7 +334,18 @@ def run_bot():
                     logger.error(f"❌ Lỗi khi mua {symbol} theo SIDEWAY: {e}")            
         except Exception as e:
             logger.error(f"❌ Lỗi khi xử lý dòng {i} - {row}: {e}")
-
+            
+def save_entry_prices(prices_dict):
+    try:
+        with open("spot_entry_prices.json", "w") as f:
+            json.dump(prices_dict, f, indent=2)
+            f.flush()  # 🔁 Đảm bảo ghi xong
+            os.fsync(f.fileno())  # 💾 Ghi ra đĩa thật (tránh ghi tạm vào cache)
+        logger.debug("💾 Đã ghi file spot_entry_prices.json xong.")
+        logger.debug(f"📦 Nội dung file: \n{json.dumps(prices_dict, indent=2)}")
+    except Exception as e:
+        logger.error(f"❌ Lỗi khi lưu file spot_entry_prices.json: {e}")
+        
 def main():
     now = datetime.utcnow()
     minute = now.minute
