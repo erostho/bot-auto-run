@@ -146,12 +146,22 @@ def auto_sell_once():
                 # ✅ Kiểm tra nếu đạt mức chốt lời, Sau khi bán xong, xoá coin khỏi danh sách theo dõi
                 was_updated = False  # ✅ Thêm biến cờ theo dõi
                 if percent_gain >= 20:
-                    logger.info(f"✅ CHỐT LỜI: {symbol} tăng {percent_gain:.2f}% từ {entry_price} => {current_price}")
+                    logger.info(f"📈 CHỐT LỜI: {symbol} tăng {percent_gain:.2f}% từ {entry_price} => {current_price}")
                     try:
+                        # ✅ LẤY min amount từ sàn OKX
+                        market = exchange.market(symbol)
+                        min_amount = market['limits']['amount']['min']
+                        
+                        if balance < min_amount:
+                            logger.warning(f"⚠️ {symbol} amount={balance} < min_amount={min_amount} => KHÔNG đặt lệnh")
+                            continue  # Bỏ qua nếu không đủ điều kiện
+                        
+                        # ✅ Tiến hành đặt lệnh nếu đủ
                         exchange.create_market_sell_order(symbol, balance)
-                        logger.info(f"💰 Đã bán {symbol} số lượng {balance} để chốt lời")
-                        updated_prices.pop(symbol, None)     # ✅ Xoá khỏi danh sách theo dõi
-                        was_updated = True                   # ✅ Đánh dấu có thay đổi
+                        logger.info(f"✅ Đã bán {symbol} số lượng {balance} để chốt lời")
+                        updated_prices.pop(symbol, None)
+                        was_updated = True
+                
                     except Exception as e:
                         logger.error(f"❌ Lỗi khi bán {symbol}: {e}")
                         continue  
