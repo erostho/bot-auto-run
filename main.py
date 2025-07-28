@@ -114,26 +114,23 @@ def auto_sell_once():
                 
                 # ✅ Tính phần trăm lời
                 percent_gain = ((current_price - entry_price) / entry_price) * 100
-                
-                # ✅ Kiểm tra nếu đạt mức chốt lời
+                # ✅ Kiểm tra nếu đạt mức chốt lời, Sau khi bán xong, xoá coin khỏi danh sách theo dõi
+                 was_updated = False  # ✅ Thêm biến cờ theo dõi
                 if percent_gain >= 20:
                     logger.info(f"✅ CHỐT LỜI: {symbol} tăng {percent_gain:.2f}% từ {entry_price} => {current_price}")
-                
-                    # 👉 Gọi lệnh bán thật nếu muốn
                     try:
                         exchange.create_market_sell_order(symbol, balance)
                         logger.info(f"💰 Đã bán {symbol} số lượng {balance} để chốt lời")
+                        updated_prices.pop(symbol, None)     # ✅ Xoá khỏi danh sách theo dõi
+                        was_updated = True                   # ✅ Đánh dấu có thay đổi
                     except Exception as e:
                         logger.error(f"❌ Lỗi khi bán {symbol}: {e}")
-                        continue
-                    # ✅ Sau khi bán xong, xoá coin khỏi danh sách theo dõi
-                    updated_prices.pop(symbol, None)
-            except Exception as e:
-                logger.error(f"❌ Lỗi khi xử lý coin {coin}: {e}")                       
-        # 💾 Cập nhật biến toàn cục và lưu lại file
-        spot_entry_prices = updated_prices
-        save_entry_prices(spot_entry_prices)
-        logger.debug(f"💾 Đã cập nhật spot_entry_prices: {json.dumps(spot_entry_prices, indent=2)}")
+                        continue  
+                # ✅ Chỉ ghi file nếu có thay đổi thực sự
+                if was_updated:
+                    spot_entry_prices = updated_prices
+                    save_entry_prices(spot_entry_prices)
+                    logger.debug(f"📂 Đã cập nhật spot_entry_prices: {json.dumps(spot_entry_prices, indent=2)}")
     except Exception as e:
         logger.error(f"❌ Lỗi chính trong auto_sell_once(): {e}")
 
