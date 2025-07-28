@@ -12,7 +12,7 @@ import json
 # logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s:%(message)s")
 # logger = logging.getLogger("AUTO_SELL")
 logger = logging.getLogger("AUTO_SELL")
-logger.setLevel(logging.DEBUG)  # Luôn bật DEBUG
+logger.setLevel(logging.DEBUG)  # Luôn bật DEBUG/INFO
 
 handler = logging.StreamHandler()
 handler.setLevel(logging.DEBUG)
@@ -40,16 +40,20 @@ exchange = ccxt.okx({
 })
 
 spot_entry_prices = {}  # ✅ khai báo biến toàn cục
-spot_entry_prices_path = os.path.join(os.path.dirname(__file__), "spot_entry_prices.json")
-
-        
+spot_entry_prices_path = os.path.join(os.path.dirname(__file__), "spot_entry_prices.json")        
 def load_entry_prices():
+    spot_entry_prices_path = os.path.join(os.path.dirname(__file__), "spot_entry_prices.json") 
     try:
         if not os.path.exists(spot_entry_prices_path):
             logger.warning(f"⚠️ File {spot_entry_prices_path} KHÔNG tồn tại! => Trả về dict rỗng.")
             return {}
         with open(spot_entry_prices_path, "r") as f:
-            return json.load(f)
+            data = json.load(f)
+            if not isinstance(data, dict):
+                logger.warning(f"⚠️ Dữ liệu trong {spot_entry_prices_path} KHÔNG phải dict: {type(data)}")
+                return {}
+            logger.debug(f"📥 Đã load JSON từ file: {json.dumps(data, indent=2)}")  # 👈 Log toàn bộ json
+            return data
     except Exception as e:
         logger.error(f"❌ Lỗi khi load {spot_entry_prices_path}: {e}")
         return {}
@@ -59,9 +63,13 @@ def auto_sell_once():
     logging.info("🟢 [AUTO SELL WATCHER] Đã khởi động luồng kiểm tra auto sell")
 
     # Load lại dữ liệu
+
     new_data = load_entry_prices()
     if isinstance(new_data, dict):
         spot_entry_prices.update(new_data)
+        # Sau khi load thành công:
+        for symbol, data in spot_entry_prices.items():
+            logger.debug(f"[ENTRY JSON] {symbol}: {data} (type={type(data)})")
     else:
         logging.warning("⚠️ Dữ liệu load từ JSON không phải dict!")
 
@@ -111,6 +119,7 @@ def auto_sell_once():
         
                 # Các bước xử lý tiếp theo...
                 current_price = ticker["last"]
+                logger.debug(f"🔍 Đang kiểm tra coin: {coin}, symbol: {symbol}, entry_keys: {list(spot_entry_prices.keys())}")
                 entry_data = spot_entry_prices.get(symbol)
                 
                 # ✅ Kiểm tra dữ liệu entry_data phải là dict
