@@ -123,7 +123,11 @@ def auto_sell_once():
                 # Các bước xử lý tiếp theo...
                 current_price = ticker["last"]
                 logger.debug(f"🔍 Đang kiểm tra coin: {coin}, symbol: {symbol}, entry_keys: {list(spot_entry_prices.keys())}")
-                entry_data = spot_entry_prices.get(symbol).upper()
+                if not isinstance(symbol, str):
+                    logger.warning(f"⚠️ symbol không phải string: {symbol} ({type(symbol)})")
+                    continue
+                entry_data = spot_entry_prices.get(symbol.upper())
+
                 
                 # ✅ Kiểm tra dữ liệu entry_data phải là dict
                 if not isinstance(entry_data, dict):
