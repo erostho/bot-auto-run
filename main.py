@@ -12,7 +12,7 @@ import json
 # logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s:%(message)s")
 # logger = logging.getLogger("AUTO_SELL")
 logger = logging.getLogger("AUTO_SELL")
-logger.setLevel(logging.DEBUG)  # Luôn bật DEBUG/INFO
+logger.setLevel(logging.INFO)  # Luôn bật DEBUG/INFO
 
 handler = logging.StreamHandler()
 handler.setLevel(logging.DEBUG)
