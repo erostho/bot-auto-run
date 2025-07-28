@@ -88,6 +88,7 @@ def auto_sell_once():
                 and coin.endswith("/USDT")       # Chỉ lấy coin/USDT
                 and coin in tickers              # Có giá hiện tại
                 and float(tickers[coin]['last']) * float(data.get("total", 0)) > 1  # Giá trị > 1 USDT
+                and amount >= 1
             )
         }
         
