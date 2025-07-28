@@ -71,14 +71,27 @@ def auto_sell_once():
         balances = exchange.fetch_balance()
         tickers = exchange.fetch_tickers()
         updated_prices = spot_entry_prices.copy()
-        
-        # ✅ Lọc danh sách coin đang giữ trong ví SPOT
+        # ✅ Lọc coin trong tài khoản
         spot_coins = {
             coin: float(data.get("total", 0))
             for coin, data in balances.items()
-            if isinstance(data, dict) and float(data.get("total", 0)) > 0
+            if (
+                isinstance(data, dict)
+                and float(data.get("total", 0)) > 0
+                and coin.endswith("/USDT")       # Chỉ lấy coin/USDT
+                and coin in tickers              # Có giá hiện tại
+                and float(tickers[coin]['last']) * float(data.get("total", 0)) > 1  # Giá trị > 1 USDT
+            )
         }
-        logging.info(f"📊 Hiện có {len(spot_coins)} coin trong ví SPOT: {list(spot_coins.keys())}")
+        
+        # ✅ Hiển thị chi tiết từng coin
+        for coin, amount in spot_coins.items():
+            try:
+                price = float(tickers[coin]['last'])
+                value = price * amount
+                logger.debug(f"[SPOT HOLDINGS] {coin}: số lượng = {amount:.4f}, giá = {price:.6f} → giá trị = {value:.2f} USDT")
+            except Exception as e:
+                logger.warning(f"[⚠️] Không thể lấy giá cho {coin}: {e}")
         
         # ✅ Duyệt từng coin trong balance
         for coin, balance_data in balances.items():
