@@ -128,19 +128,23 @@ def auto_sell_once():
                     logger.warning(f"⚠️ symbol không phải string: {symbol} ({type(symbol)})")
                     continue
                 entry_data = spot_entry_prices.get(symbol.upper())
-
-                
-                # ✅ Kiểm tra dữ liệu entry_data phải là dict
                 if not isinstance(entry_data, dict):
                     logger.warning(f"⚠️ {symbol} entry_data KHÔNG phải dict: {entry_data}")
                     continue
-                
-                # ✅ Lấy giá mua ban đầu
+                # ✅ Lấy giá mua và timestamp từ entry_data
                 entry_price = entry_data.get("price")
+                timestamp = entry_data.get("timestamp")
+                
+                # ✅ Kiểm tra entry_price phải là số
                 if not isinstance(entry_price, (int, float)):
                     logger.warning(f"⚠️ {symbol} entry_price không phải số: {entry_price}")
                     continue
-                
+                    
+                # ✅ Kiểm tra timestamp phải là string (chuỗi ISO 8601)
+                if not isinstance(timestamp, str):
+                    logger.warning(f"⚠️ {symbol} timestamp KHÔNG phải chuỗi ISO: {timestamp}")
+                    continue
+                    
                 # ✅ Tính phần trăm lời
                 percent_gain = ((current_price - entry_price) / entry_price) * 100
                 # ✅ Kiểm tra nếu đạt mức chốt lời, Sau khi bán xong, xoá coin khỏi danh sách theo dõi
