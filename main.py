@@ -110,17 +110,20 @@ def auto_sell_once():
                 balance = balance_data.get("total", 0)
                 if not balance or balance <= 0:
                     continue
-        
-                symbol = f"{coin}-USDT"
-                ticker = tickers.get(symbol)
+                    
+                symbol_dash = f"{coin}-USDT"
+                symbol_slash = f"{coin}/USDT"
+                # Ưu tiên symbol có trong tickers
+                ticker = tickers.get(symbol_dash) or tickers.get(symbol_slash)
+                
                 if not ticker:
-                    logger.warning(f"⚠️ Không có giá hiện tại cho {symbol}")
+                    logger.warning(f"⚠️ Không có giá hiện tại cho {symbol_dash} hoặc {symbol_slash}")
                     continue
         
                 # Các bước xử lý tiếp theo...
                 current_price = ticker["last"]
                 logger.debug(f"🔍 Đang kiểm tra coin: {coin}, symbol: {symbol}, entry_keys: {list(spot_entry_prices.keys())}")
-                entry_data = spot_entry_prices.get(symbol)
+                entry_data = spot_entry_prices.get(symbol).upper()
                 
                 # ✅ Kiểm tra dữ liệu entry_data phải là dict
                 if not isinstance(entry_data, dict):
