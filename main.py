@@ -40,7 +40,7 @@ exchange = ccxt.okx({
 })
 
 spot_entry_prices = {}  # ✅ khai báo biến toàn cục
-spot_entry_prices_path = "spot_entry_prices.json"
+spot_entry_prices_path = os.path.join(os.path.dirname(__file__), "spot_entry_prices.json")
 
         
 def load_entry_prices():
