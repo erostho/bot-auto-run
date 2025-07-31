@@ -92,10 +92,10 @@ def auto_sell_once():
             )
         }
         # ✅ Hiển thị log các coin đang nắm giữ (sau khi lọc đủ điều kiện)
-            for coin, amount in spot_coins.items():
-                entry_data = spot_entry_prices.get(coin.upper())
-                entry_price = entry_data.get("price") if isinstance(entry_data, dict) else None
-                logging.info(f"📌 Đang giữ {coin} | Số lượng: {amount} | Giá mua: {entry_price}")
+        for coin, amount in spot_coins.items():
+            entry_data = spot_entry_prices.get(coin.upper())
+            entry_price = entry_data.get("price") if isinstance(entry_data, dict) else None
+            logging.info(f"📌 Đang giữ {coin} | Số lượng: {amount} | Giá mua: {entry_price}")
         # ✅ Hiển thị chi tiết từng coin
         for coin, amount in spot_coins.items():
             try:
