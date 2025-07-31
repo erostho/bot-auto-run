@@ -93,7 +93,8 @@ def auto_sell_once():
         }
         # ✅ Hiển thị log các coin đang nắm giữ (sau khi lọc đủ điều kiện)
         for coin, amount in spot_coins.items():
-            entry_data = spot_entry_prices.get(symbol.upper())
+            symbol_key = symbol.upper().replace("/", "-")  # Chuẩn hóa giống key trong JSON
+            entry_data = spot_entry_prices.get(symbol_key)
             if not isinstance(entry_data, dict):
                 logger.warning(f"⚠️ {symbol} entry_data KHÔNG phải dict: {entry_data} ({type(entry_data)})")
                 continue
