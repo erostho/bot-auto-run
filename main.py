@@ -64,6 +64,7 @@ def auto_sell_once():
 
     # Load entry price từ file
     new_data = load_entry_prices()
+    logging.debug(f"📦 Entry data vừa load: {new_data}")
     if not isinstance(new_data, dict):
         logging.warning("⚠️ Dữ liệu entry price không hợp lệ! Không phải dict.")
         return
