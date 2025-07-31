@@ -12,7 +12,7 @@ import json
 # logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s:%(message)s")
 # logger = logging.getLogger("AUTO_SELL")
 logger = logging.getLogger("AUTO_SELL")
-logger.setLevel(logging.INFO)  # Luôn bật DEBUG/INFO
+logger.setLevel(logging.DEBUG)  # Luôn bật DEBUG/INFO
 
 handler = logging.StreamHandler()
 handler.setLevel(logging.DEBUG)
@@ -163,7 +163,9 @@ def auto_sell_once():
             except Exception as e:
                 logger.error(f"❌ Lỗi khi xử lý coin {coin}: {e}")
     except Exception as e:
-        logger.error(f"❌ Lỗi chính trong auto_sell_once(): {e}")       
+        logger.error(f"❌ Lỗi chính trong auto_sell_once(): {e}")
+
+        
 def fetch_sheet():
     try:
         csv_url = SPREADSHEET_URL.replace("/edit#gid=", "/export?format=csv&gid=")
@@ -278,7 +280,6 @@ def run_bot():
                     usdt_amount = 10
                     price = float(exchange.fetch_ticker(symbol)['last']) # ép về float
                     amount = round(usdt_amount / price, 6)
-                    
                     # === CHỐNG FOMO (dành cho trend TĂNG) ===
                     ohlcv = exchange.fetch_ohlcv(symbol, timeframe="1h", limit=30)
                     closes = [c[4] for c in ohlcv]
@@ -291,7 +292,7 @@ def run_bot():
                     price_3bars_ago = closes[-4]
                     price_change = (price_now - price_3bars_ago) / price_3bars_ago * 100
                     
-                    if rsi > 70 or vol > vol_sma20 * 2 or price_change > 20:
+                    if rsi > 70 or vol > vol_sma20 * 2 or price_change > 10:
                         logger.info(f"⛔ {symbol} bị loại do FOMO trong trend TĂNG (RSI={rsi:.1f}, Δgiá 3h={price_change:.1f}%)")
                         continue
                     logger.info(f"💰 [TĂNG] Mua {amount} {symbol} với {usdt_amount} USDT (giá {price})")
@@ -324,9 +325,8 @@ def run_bot():
                     price_now = closes[-1]
                     price_3bars_ago = closes[-4]
                     price_change = (price_now - price_3bars_ago) / price_3bars_ago * 100
-                    
                     # Nếu có dấu hiệu FOMO thì bỏ qua
-                    if rsi > 70 or vol > vol_sma20 * 2 or price_change > 20:
+                    if rsi > 70 or vol > vol_sma20 * 2 or price_change > 10:
                         logger.info(f"⛔ {symbol} bị loại do dấu hiệu FOMO (RSI={rsi:.2f}, Δgiá 3h={price_change:.1f}%, vol={vol:.0f})")
                         continue
                     if len(closes) < 20:
@@ -388,6 +388,6 @@ def main():
     else:
         print(f"⌛ Chưa đến thời điểm chạy run_bot(), phút hiện tại = {minute}")
         logger.info("🟢 Bắt đầu chạy auto_sell_once() khi KHÔNG có run_bot()")
-        auto_sell_once()    
+        auto_sell_once()   
 if __name__ == "__main__":
     main()
