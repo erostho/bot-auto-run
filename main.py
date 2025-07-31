@@ -96,17 +96,25 @@ def auto_sell_once():
             entry_data = spot_entry_prices.get(symbol.upper())
             if not isinstance(entry_data, dict):
                 logger.warning(f"⚠️ {symbol} entry_data KHÔNG phải dict: {entry_data} ({type(entry_data)})")
-                continue 
+                continue
+            
             entry_price = entry_data.get("price")
             timestamp = entry_data.get("timestamp")
             
+            # ✅ Kiểm tra giá mua
             if not isinstance(entry_price, (int, float)):
                 logger.warning(f"⚠️ {symbol} entry_price KHÔNG phải số: {entry_price}")
                 continue
-            if not isinstance(timestamp, str):
-                logger.warning(f"⚠️ {symbol} timestamp KHÔNG phải string: {timestamp}")
+            
+            # ✅ Kiểm tra timestamp hợp lệ (cho phép cả str hoặc int để tránh lỗi)
+            if not isinstance(timestamp, (str, int, float)):
+                logger.warning(f"⚠️ {symbol} timestamp KHÔNG hợp lệ: {timestamp} ({type(timestamp)})")
                 continue
-            logger.info(f"📌 Đang giữ {coin} | Số lượng: {amount:.4f} | Giá mua: {entry_price:.6f} | Timestamp: {timestamp}")
+            
+            # ✅ Ép timestamp về string để dễ xử lý sau này
+            timestamp_str = str(timestamp)
+            
+            logger.info(f"📌 Đang giữ {symbol} | Số lượng: {amount:.4f} | Giá mua: {entry_price:.6f} | Timestamp: {timestamp_str}")
         # ✅ Hiển thị chi tiết từng coin
         for coin, amount in spot_coins.items():
             try:
