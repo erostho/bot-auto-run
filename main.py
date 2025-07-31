@@ -64,11 +64,13 @@ def auto_sell_once():
 
     # Load entry price từ file
     new_data = load_entry_prices()
-    logging.debug(f"📦 Entry data vừa load: {new_data}")
-    if not isinstance(new_data, dict):
-        logging.warning("⚠️ Dữ liệu entry price không hợp lệ! Không phải dict.")
-        return
-    spot_entry_prices.update(new_data)
+    if isinstance(new_data, dict):
+        spot_entry_prices.update(new_data)
+        # Sau khi load thành công:
+        for symbol, data in spot_entry_prices.items():
+            logger.debug(f"[ENTRY JSON] {symbol}: {data} (type={type(data)})")
+    else:
+        logging.warning("⚠️ Dữ liệu load từ JSON không phải dict!")
 
     try:
         balances = exchange.fetch_balance()
