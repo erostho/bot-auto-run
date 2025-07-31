@@ -107,9 +107,14 @@ def auto_sell_once():
                 if not isinstance(balance_data, dict):
                     logger.warning(f"⚠️ {coin} không phải dict: {balance_data}")
                     continue
-                balance = balance_data.get("total", 0)
-                if not balance or balance <= 0:
-                    continue    
+                balance = float(balance_data.get("total", 0))
+                if balance <= 0:
+                    continue
+                
+                # ✅ Bỏ qua coin có số lượng nhỏ hơn 1
+                if balance < 1:
+                    logger.debug(f"⚠️ Bỏ qua {coin} vì số lượng quá nhỏ: {balance}")
+                    continue  
                 symbol_dash = f"{coin}-USDT"
                 symbol_slash = f"{coin}/USDT"
                 # ✅ Ưu tiên symbol có trong tickers
