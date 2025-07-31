@@ -107,11 +107,9 @@ def auto_sell_once():
                 if not isinstance(balance_data, dict):
                     logger.warning(f"⚠️ {coin} không phải dict: {balance_data}")
                     continue
-        
                 balance = balance_data.get("total", 0)
                 if not balance or balance <= 0:
-                    continue
-                    
+                    continue    
                 symbol_dash = f"{coin}-USDT"
                 symbol_slash = f"{coin}/USDT"
                 # ✅ Ưu tiên symbol có trong tickers
@@ -119,45 +117,39 @@ def auto_sell_once():
                 if not ticker or 'last' not in ticker:
                     logger.warning(f"⚠️ Không có giá hiện tại cho {symbol_dash} hoặc {symbol_slash} (ticker=None hoặc thiếu key 'last')")
                     continue
-                            
-                # ✅ Lấy giá hiện tại
+        
+                # ✅ Lấy giá hiện tại chính xác
                 try:
                     current_price = float(ticker['last'])
-                    logger.debug(f"💵 Giá hiện tại của {coin} ({symbol_dash}): {current_price} (ticker={ticker})")
+                    logger.debug(f"📉 Giá hiện tại của {coin} ({symbol_dash}): {current_price} (ticker={ticker})")
                 except Exception as e:
                     logger.warning(f"⚠️ Giá hiện tại của {coin} KHÔNG hợp lệ: {ticker['last']} ({e})")
                     continue
-                        
-                # Các bước xử lý tiếp theo...
-                logger.debug(f"🔍 Đang kiểm tra coin: {coin}, symbol: {symbol}, entry_keys: {list(spot_entry_prices.keys())}")
-                if not isinstance(symbol, str):
-                    logger.warning(f"⚠️ symbol không phải string: {symbol} ({type(symbol)})")
-                    continue
+        
+                # ✅ Gán đúng symbol (tránh dùng nhầm)
+                symbol = symbol_dash
+        
+                # ✅ Lấy entry_price từ dict
                 entry_data = spot_entry_prices.get(symbol.upper())
-
-                
-                # ✅ Kiểm tra dữ liệu entry_data phải là dict
                 if not isinstance(entry_data, dict):
                     logger.warning(f"⚠️ {symbol} entry_data KHÔNG phải dict: {entry_data}")
                     continue
-                
-                # ✅ Lấy giá mua ban đầu
+        
                 entry_price = entry_data.get("price")
                 if not isinstance(entry_price, (int, float)):
-                    logger.warning(f"⚠️ {symbol} entry_price không phải số: {entry_price}")
+                    logger.warning(f"⚠️ {symbol} entry_price KHÔNG phải số: {entry_price}")
                     continue
-                
+        
                 # ✅ Tính phần trăm lời
                 percent_gain = ((current_price - entry_price) / entry_price) * 100
-                # ✅ Kiểm tra nếu đạt mức chốt lời, Sau khi bán xong, xoá coin khỏi danh sách theo dõi
-                was_updated = False  # ✅ Thêm biến cờ theo dõi
+        
                 if percent_gain >= 15:
                     logger.info(f"✅ CHỐT LỜI: {symbol} tăng {percent_gain:.2f}% từ {entry_price} => {current_price}")
                     try:
                         exchange.create_market_sell_order(symbol, balance)
                         logger.info(f"💰 Đã bán {symbol} số lượng {balance} để chốt lời")
-                        updated_prices.pop(symbol, None)     # ✅ Xoá khỏi danh sách theo dõi
-                        was_updated = True                   # ✅ Đánh dấu có thay đổi
+                        updated_prices.pop(symbol, None)
+                        was_updated = True
                     except Exception as e:
                         logger.error(f"❌ Lỗi khi bán {symbol}: {e}")
                         continue  
@@ -168,6 +160,7 @@ def auto_sell_once():
                     logger.debug(f"📂 Đã cập nhật spot_entry_prices: {json.dumps(spot_entry_prices, indent=2)}")
             except Exception as e:
                 logger.error(f"❌ Lỗi khi xử lý coin {coin}: {e}")
+                continue
     except Exception as e:
         logger.error(f"❌ Lỗi chính trong auto_sell_once(): {e}")
 
