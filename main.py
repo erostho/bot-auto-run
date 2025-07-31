@@ -141,7 +141,12 @@ def auto_sell_once():
                 if not isinstance(entry_data, dict):
                     logger.warning(f"⚠️ {symbol} entry_data KHÔNG phải dict: {entry_data}")
                     continue
-        
+                # 🕒 Kiểm tra timestamp (nếu có)
+                timestamp = entry_data.get("timestamp")
+                if not isinstance(timestamp, str):
+                    logger.warning(f"⚠️ {symbol} timestamp KHÔNG phải string: {timestamp}")
+                else:
+                    logger.debug(f"⏱️ Entry timestamp cho {symbol}: {timestamp}")
                 entry_price = entry_data.get("price")
                 if not isinstance(entry_price, (int, float)):
                     logger.warning(f"⚠️ {symbol} entry_price KHÔNG phải số: {entry_price}")
