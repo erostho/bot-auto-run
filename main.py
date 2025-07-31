@@ -73,92 +73,92 @@ def auto_sell_once():
         logging.warning("⚠️ Dữ liệu load từ JSON không phải dict!")
 
     try:
+        logging.info("🔄 [AUTO SELL] Kiểm tra ví SPOT để chốt lời...")
         balances = exchange.fetch_balance()
         tickers = exchange.fetch_tickers()
-    except Exception as e:
-        logging.error(f"❌ Không thể fetch balance/ticker: {e}")
-        return
-
-    # ✅ Lọc coin đang giữ có giá trị > 1 USDT
-    spot_coins = {
-        coin: float(data.get("total", 0))
-        for coin, data in balances.items()
-        if (
-            isinstance(data, dict)
-            and float(data.get("total", 0)) > 0
-            and coin.endswith("/USDT")
-            and coin in tickers
-            and float(tickers[coin]['last']) * float(data.get("total", 0)) > 1
-        )
-    }
-
-    # ✅ Hiển thị log coin đang giữ
-    for symbol, amount in spot_coins.items():
-        symbol_key = symbol.upper().replace("/", "-")
-        entry_data = spot_entry_prices.get(symbol_key)
-        if not isinstance(entry_data, dict):
-            logger.warning(f"⚠️ {symbol_key} entry_data không phải dict: {entry_data}")
-            continue
-
-        entry_price = entry_data.get("price")
-        timestamp = entry_data.get("timestamp")
-
-        if not isinstance(entry_price, (int, float)):
-            logger.warning(f"⚠️ {symbol_key} entry_price không hợp lệ: {entry_price}")
-            continue
-        if not isinstance(timestamp, (str, int, float)):
-            logger.warning(f"⚠️ {symbol_key} timestamp không hợp lệ: {timestamp}")
-            continue
-
-        logger.info(f"📌 Đang giữ {symbol_key} | SL: {amount:.4f} | Giá mua: {entry_price:.6f} | TS: {timestamp}")
-
-    updated_prices = spot_entry_prices.copy()
-    for coin, amount in spot_coins.items():
-        try:
-            symbol = coin
-            price = float(tickers[coin]['last'])
+        updated_prices = spot_entry_prices.copy()
+        # ✅ Lọc coin trong tài khoản
+        spot_coins = {
+            coin: float(data.get("total", 0))
+            for coin, data in balances.items()
+            if (
+                isinstance(data, dict)
+                and float(data.get("total", 0)) > 0
+                and coin.endswith("/USDT")       # Chỉ lấy coin/USDT
+                and coin in tickers              # Có giá hiện tại
+                and float(tickers[coin]['last']) * float(data.get("total", 0)) > 1  # Giá trị > 1 USDT
+                and amount >= 1
+            )
+        }
+        except Exception as e:
+            logger.error(f"❌ Lỗi chính trong auto_sell_once(): {e}")
+        # ✅ Hiển thị log coin đang giữ
+        for symbol, amount in spot_coins.items():
             symbol_key = symbol.upper().replace("/", "-")
-
             entry_data = spot_entry_prices.get(symbol_key)
             if not isinstance(entry_data, dict):
-                logger.warning(f"⚠️ Không tìm thấy entry_data cho {symbol_key}")
+                logger.warning(f"⚠️ {symbol_key} entry_data không phải dict: {entry_data}")
                 continue
-
+    
             entry_price = entry_data.get("price")
+            timestamp = entry_data.get("timestamp")
+    
             if not isinstance(entry_price, (int, float)):
-                logger.warning(f"⚠️ entry_price không hợp lệ cho {symbol_key}: {entry_price}")
+                logger.warning(f"⚠️ {symbol_key} entry_price không hợp lệ: {entry_price}")
                 continue
-
-            percent_gain = ((price - entry_price) / entry_price) * 100
-
-            if percent_gain >= 15:
-                logger.info(f"📈 CHỐT LỜI {symbol_key}: +{percent_gain:.2f}% từ {entry_price} → {price}")
-                try:
-                    market = exchange.market(symbol)
-                    min_amount = market['limits']['amount']['min']
-                    if amount < min_amount:
-                        logger.warning(f"⚠️ {symbol_key} amount={amount} < min={min_amount}")
+            if not isinstance(timestamp, (str, int, float)):
+                logger.warning(f"⚠️ {symbol_key} timestamp không hợp lệ: {timestamp}")
+                continue
+    
+            logger.info(f"📌 Đang giữ {symbol_key} | SL: {amount:.4f} | Giá mua: {entry_price:.6f} | TS: {timestamp}")
+    
+        updated_prices = spot_entry_prices.copy()
+        for coin, amount in spot_coins.items():
+            try:
+                symbol = coin
+                price = float(tickers[coin]['last'])
+                symbol_key = symbol.upper().replace("/", "-")
+    
+                entry_data = spot_entry_prices.get(symbol_key)
+                if not isinstance(entry_data, dict):
+                    logger.warning(f"⚠️ Không tìm thấy entry_data cho {symbol_key}")
+                    continue
+    
+                entry_price = entry_data.get("price")
+                if not isinstance(entry_price, (int, float)):
+                    logger.warning(f"⚠️ entry_price không hợp lệ cho {symbol_key}: {entry_price}")
+                    continue
+    
+                percent_gain = ((price - entry_price) / entry_price) * 100
+    
+                if percent_gain >= 15:
+                    logger.info(f"📈 CHỐT LỜI {symbol_key}: +{percent_gain:.2f}% từ {entry_price} → {price}")
+                    try:
+                        market = exchange.market(symbol)
+                        min_amount = market['limits']['amount']['min']
+                        if amount < min_amount:
+                            logger.warning(f"⚠️ {symbol_key} amount={amount} < min={min_amount}")
+                            continue
+                    except Exception as e:
+                        logger.error(f"❌ Lỗi khi lấy min_amount cho {symbol_key}: {e}")
                         continue
-                except Exception as e:
-                    logger.error(f"❌ Lỗi khi lấy min_amount cho {symbol_key}: {e}")
-                    continue
-
-                try:
-                    exchange.create_market_sell_order(symbol, amount)
-                    logger.info(f"✅ Đã bán {symbol_key}, SL: {amount}")
-                    updated_prices.pop(symbol_key, None)
-                except Exception as e:
-                    logger.error(f"❌ Lỗi khi bán {symbol_key}: {e}")
-                    continue
-        except Exception as e:
-            logger.error(f"❌ Lỗi khi xử lý {coin}: {e}")
-            continue
-
-    # ✅ Cập nhật file nếu có thay đổi
-    if updated_prices != spot_entry_prices:
-        spot_entry_prices = updated_prices
-        save_entry_prices(spot_entry_prices)
-        logger.info("📂 Đã cập nhật spot_entry_prices sau khi bán.")
+    
+                    try:
+                        exchange.create_market_sell_order(symbol, amount)
+                        logger.info(f"✅ Đã bán {symbol_key}, SL: {amount}")
+                        updated_prices.pop(symbol_key, None)
+                    except Exception as e:
+                        logger.error(f"❌ Lỗi khi bán {symbol_key}: {e}")
+                        continue
+            except Exception as e:
+                logger.error(f"❌ Lỗi khi xử lý {coin}: {e}")
+                continue
+    
+        # ✅ Cập nhật file nếu có thay đổi
+        if updated_prices != spot_entry_prices:
+            spot_entry_prices = updated_prices
+            save_entry_prices(spot_entry_prices)
+            logger.info("📂 Đã cập nhật spot_entry_prices sau khi bán.")
         
 def fetch_sheet():
     try:
