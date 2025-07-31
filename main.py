@@ -59,6 +59,7 @@ def load_entry_prices():
         return {}
         
 def auto_sell_once():
+    global spot_entry_prices
     logging.info("🟢 [AUTO SELL] Bắt đầu kiểm tra chốt lời SPOT")
 
     # Load entry price từ file
