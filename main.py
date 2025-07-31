@@ -124,6 +124,7 @@ def auto_sell_once():
                 # ✅ Lấy giá hiện tại
                 try:
                     current_price = float(ticker['last'])
+                    logger.debug(f"💵 Giá hiện tại của {coin} ({symbol_dash}): {current_price} (ticker={ticker})")
                 except Exception as e:
                     logger.warning(f"⚠️ Giá hiện tại của {coin} KHÔNG hợp lệ: {ticker['last']} ({e})")
                     continue
