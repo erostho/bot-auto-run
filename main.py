@@ -116,11 +116,10 @@ def auto_sell_once():
                 symbol_slash = f"{coin}/USDT"
                 # ✅ Ưu tiên symbol có trong tickers
                 ticker = tickers.get(symbol_dash) or tickers.get(symbol_slash)
-                
                 if not ticker or 'last' not in ticker:
-                    logger.warning(f"⚠️ Không có giá hiện tại cho {symbol_dash} hoặc {symbol_slash} (ticker=None hoặc thiếu key 'last')")
-                    continue
-                
+                logger.warning(f"⚠️ Không có giá hiện tại cho {symbol_dash} hoặc {symbol_slash} (ticker=None hoặc thiếu key 'last')")
+                continue
+                            
                 # ✅ Lấy giá hiện tại
                 try:
                     current_price = float(ticker['last'])
