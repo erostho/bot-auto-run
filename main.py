@@ -60,6 +60,7 @@ def load_entry_prices():
         
 def auto_sell_once():
     global spot_entry_prices
+    was_updated = False  # ✅ Reset biến mỗi lần duyệt coin
     logging.info("🟢 [AUTO SELL WATCHER] Đã khởi động luồng kiểm tra auto sell")
 
     # Load lại dữ liệu
