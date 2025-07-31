@@ -114,13 +114,20 @@ def auto_sell_once():
                     
                 symbol_dash = f"{coin}-USDT"
                 symbol_slash = f"{coin}/USDT"
-                # Ưu tiên symbol có trong tickers
+                # ✅ Ưu tiên symbol có trong tickers
                 ticker = tickers.get(symbol_dash) or tickers.get(symbol_slash)
                 
-                if not ticker:
-                    logger.warning(f"⚠️ Không có giá hiện tại cho {symbol_dash} hoặc {symbol_slash}")
+                if not ticker or 'last' not in ticker:
+                    logger.warning(f"⚠️ Không có giá hiện tại cho {symbol_dash} hoặc {symbol_slash} (ticker=None hoặc thiếu key 'last')")
                     continue
-        
+                
+                # ✅ Lấy giá hiện tại
+                try:
+                    current_price = float(ticker['last'])
+                except Exception as e:
+                    logger.warning(f"⚠️ Giá hiện tại của {coin} KHÔNG hợp lệ: {ticker['last']} ({e})")
+                    continue
+                        
                 # Các bước xử lý tiếp theo...
                 current_price = ticker["last"]
                 logger.debug(f"🔍 Đang kiểm tra coin: {coin}, symbol: {symbol}, entry_keys: {list(spot_entry_prices.keys())}")
@@ -145,7 +152,7 @@ def auto_sell_once():
                 percent_gain = ((current_price - entry_price) / entry_price) * 100
                 # ✅ Kiểm tra nếu đạt mức chốt lời, Sau khi bán xong, xoá coin khỏi danh sách theo dõi
                 was_updated = False  # ✅ Thêm biến cờ theo dõi
-                if percent_gain >= 20:
+                if percent_gain >= 15:
                     logger.info(f"✅ CHỐT LỜI: {symbol} tăng {percent_gain:.2f}% từ {entry_price} => {current_price}")
                     try:
                         exchange.create_market_sell_order(symbol, balance)
