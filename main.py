@@ -184,11 +184,14 @@ def auto_sell_once():
                             logger.warning(f"⚠️ {symbol} amount={balance} < min_amount={min_amount} => KHÔNG đặt lệnh")
                             continue  # Bỏ qua nếu không đủ điều kiện
                         
-                        # ✅ Tiến hành đặt lệnh nếu đủ
+                    try:
                         exchange.create_market_sell_order(symbol, balance)
                         logger.info(f"✅ Đã bán {symbol} số lượng {balance} để chốt lời")
                         updated_prices.pop(symbol, None)
                         was_updated = True
+                    except Exception as e:
+                        logger.error(f"❌ Lỗi khi bán {symbol}: {e}")
+                        continue  # QUAN TRỌNG: tiếp tục với coin tiếp theo
                 
                     except Exception as e:
                         logger.error(f"❌ Lỗi khi bán {symbol}: {e}")
