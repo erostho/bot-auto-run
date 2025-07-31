@@ -104,6 +104,7 @@ def auto_sell_once():
         
         # ✅ Duyệt từng coin trong balance
         for coin, balance_data in balances.items():
+            was_updated = False  # ✅ Reset biến mỗi lần duyệt coin
             try:
                 if not isinstance(balance_data, dict):
                     logger.warning(f"⚠️ {coin} không phải dict: {balance_data}")
