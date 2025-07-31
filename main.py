@@ -136,17 +136,19 @@ def auto_sell_once():
                 # ✅ Gán đúng symbol (tránh dùng nhầm)
                 symbol = symbol_dash
         
-                # ✅ Lấy entry_price từ dict
+                # ✅ Lấy entry_data từ spot_entry_prices
                 entry_data = spot_entry_prices.get(symbol.upper())
                 if not isinstance(entry_data, dict):
                     logger.warning(f"⚠️ {symbol} entry_data KHÔNG phải dict: {entry_data}")
                     continue
-                # 🕒 Kiểm tra timestamp (nếu có)
+                
+                # ✅ Kiểm tra timestamp của entry_data (phải là string)
                 timestamp = entry_data.get("timestamp")
-                if not isinstance(timestamp, str):
-                    logger.warning(f"⚠️ {symbol} timestamp KHÔNG phải string: {timestamp}")
+                if timestamp and not isinstance(timestamp, str):
+                    logger.warning(f"⚠️ {symbol} timestamp KHÔNG phải string (entry_data): {timestamp}")
+                    continue
                 else:
-                    logger.debug(f"⏱️ Entry timestamp cho {symbol}: {timestamp}")
+                    logger.debug(f"📅 Entry timestamp cho {symbol}: {timestamp}")
                 entry_price = entry_data.get("price")
                 if not isinstance(entry_price, (int, float)):
                     logger.warning(f"⚠️ {symbol} entry_price KHÔNG phải số: {entry_price}")
