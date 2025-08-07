@@ -118,8 +118,10 @@ def auto_sell_once():
                 
                 # ✅ Bỏ qua coin có số lượng nhỏ hơn 1
                 if balance < 1:
-                    logger.debug(f"⚠️ Bỏ qua {coin} vì số lượng quá nhỏ: {balance}")
-                    continue  
+                    continue
+                # ✅ Log số lượng coin đang nắm giữ (>=1)
+                logger.debug(f"✅ Coin {coin} đang nắm giữ với số lượng: {balance}")
+        
                 symbol_dash = f"{coin}-USDT"
                 symbol_slash = f"{coin}/USDT"
                 # ✅ Ưu tiên symbol có trong tickers
