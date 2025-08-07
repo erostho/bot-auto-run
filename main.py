@@ -333,6 +333,12 @@ def run_bot():
                     save_entry_prices(spot_entry_prices)
                     logger.debug(f"📦 JSON hiện tại sau khi cập nhật:\n{json.dumps(spot_entry_prices, indent=2)}")
                     time.sleep(1) # đảm bảo file được ghi hoàn toàn
+                    # ✅ Gửi thông báo về Telegram sau khi mua và cập nhật JSON
+                    try:
+                        content = json.dumps({symbol: spot_entry_prices[symbol]}, indent=2)
+                        send_to_telegram(f"✅ Đã mua {symbol} và cập nhật JSON:\n```\n{content}\n```")
+                    except Exception as e:
+                        logger.warning(f"⚠️ Không thể gửi Telegram: {e}")
                     continue  # Đã mua rồi thì bỏ qua phần dưới
                 except Exception as e:
                     logger.error(f"❌ Lỗi khi mua {symbol} theo trend TĂNG: {e}")
@@ -385,12 +391,31 @@ def run_bot():
                     save_entry_prices(spot_entry_prices)
                     logger.debug(f"📦 JSON hiện tại sau khi cập nhật:\n{json.dumps(spot_entry_prices, indent=2)}")
                     time.sleep(1) # đảm bảo file được ghi hoàn toàn
+                    # ✅ Gửi thông báo về Telegram sau khi mua và cập nhật JSON
+                    try:
+                        content = json.dumps({symbol: spot_entry_prices[symbol]}, indent=2)
+                        send_to_telegram(f"✅ Đã mua {symbol} và cập nhật JSON:\n```\n{content}\n```")
+                    except Exception as e:
+                        logger.warning(f"⚠️ Không thể gửi Telegram: {e}")
                 except Exception as e:
                     logger.error(f"❌ Lỗi khi mua {symbol} theo SIDEWAY: {e}")            
         except Exception as e:
             logger.error(f"❌ Lỗi khi xử lý dòng {i} - {row}: {e}")
-            
-        
+
+def send_to_telegram(message):
+    token = "BOT_TOKEN"
+    chat_id = "YOUR_CHAT_ID"
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    data = {"chat_id": chat_id, "text": message}
+    try:
+        requests.post(url, data=data)
+    except:
+        pass
+
+# Sau khi save json:
+msg = json.dumps(spot_entry_prices, indent=2)
+send_to_telegram(f"📂 Đã cập nhật giá mới:\n{msg}")       
+
 def main():
     now = datetime.utcnow()
     minute = now.minute
