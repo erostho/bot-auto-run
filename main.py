@@ -27,6 +27,8 @@ SPREADSHEET_URL = os.environ.get("SPREADSHEET_URL")
 OKX_API_KEY = os.environ.get("OKX_API_KEY")
 OKX_API_SECRET = os.environ.get("OKX_API_SECRET")
 OKX_API_PASSPHRASE = os.environ.get("OKX_API_PASSPHRASE")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # Khởi tạo OKX
 exchange = ccxt.okx({
@@ -403,8 +405,8 @@ def run_bot():
             logger.error(f"❌ Lỗi khi xử lý dòng {i} - {row}: {e}")
 
 def send_to_telegram(message):
-    token = "BOT_TOKEN"
-    chat_id = "YOUR_CHAT_ID"
+    token = TELEGRAM_TOKEN
+    chat_id = TELEGRAM_CHAT_ID
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     data = {"chat_id": chat_id, "text": message}
     try:
