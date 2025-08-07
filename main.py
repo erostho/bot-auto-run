@@ -68,6 +68,7 @@ def auto_sell_once():
     new_data = load_entry_prices()
     if isinstance(new_data, dict):
         spot_entry_prices.update(new_data)
+        logger.info(f"📂 File `spot_entry_prices.json` hiện tại:\n{json.dumps(spot_entry_prices, indent=2)}")
         # Sau khi load thành công:
         for symbol, data in spot_entry_prices.items():
             logger.debug(f"[ENTRY JSON] {symbol}: {data} (type={type(data)})")
