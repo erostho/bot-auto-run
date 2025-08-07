@@ -23,13 +23,13 @@
     "price": 0.0186,
     "timestamp": "2025-07-28T04:33:00Z"
   },
-  "SPURS-USDT": {
-    "price": 0.0482,
-    "timestamp": "2025-07-28T04:33:00Z"
+  "STX-USDT": {
+    "price": 0.71315,
+    "timestamp": "2025-07-31T04:33:00Z"
   },
-  "POL-USDT": {
-    "price": 0.2014,
-    "timestamp": "2025-08-01T04:33:00Z"
+  "POLYDOGE-USDT": {
+    "price": 0.0000000047873,
+    "timestamp": "2025-08-07T04:33:00Z"
   },
   "RVN-USDT": {
     "price": 0.01652,
@@ -40,4 +40,5 @@
     "timestamp": "2025-07-28T04:33:00Z"
   }
 }
+
 
