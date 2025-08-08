@@ -11,7 +11,148 @@ import os, json
     
 # Cấu hình logging
 # logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s:%(message)s")
-# logger = logging.getLogger("AUTO_SELL")
+# 
+# ===================== UPGRADE CONFIG & HELPERS =====================
+UPGRADE = {
+    "risk_per_trade": float(os.getenv("RISK_PER_TRADE", 0.008)),
+    "min_rr": float(os.getenv("MIN_RR", 1.8)),
+    "min_adx": float(os.getenv("MIN_ADX", 22)),
+    "min_atr_pct": float(os.getenv("MIN_ATR_PCT", 0.006)),
+    "min_bbwidth_pctile": float(os.getenv("MIN_BBWIDTH_PCTILE", 0.25)),
+    "vol_pctile": float(os.getenv("VOL_PCTILE", 0.70)),
+    "btc_drop_block": float(os.getenv("BTC_DROP_BLOCK", 0.008)),
+    "min_quote_volume_24h": float(os.getenv("MIN_QV_24H", 1_000_000)),
+    "max_spread": float(os.getenv("MAX_SPREAD", 0.002)),
+    "use_stop_for_spot": os.getenv("USE_STOP_FOR_SPOT", "true").lower() == "true",
+}
+def _now_iso(): 
+    return datetime.utcnow().isoformat(timespec="seconds") + "Z"
+def _percentile(vals, q):
+    vals = [float(x) for x in vals if x is not None]
+    if not vals: return None
+    vals.sort()
+    k = max(0, min(len(vals)-1, int(round(q*(len(vals)-1)))))
+    return vals[k]
+def _ema(series, n):
+    if len(series) < n: return None
+    k = 2/(n+1)
+    s = sum(series[:n])/n
+    for x in series[n:]:
+        s = x*k + s*(1-k)
+    return s
+def _adx14(ohlcv):
+    if len(ohlcv) < 20: return None
+    def tr(h,l,pc): 
+        return max(h-l, abs(h-pc), abs(l-pc))
+    plus_dm, minus_dm, trs = [], [], []
+    for i in range(1,len(ohlcv)):
+        h1,l1 = ohlcv[i][2], ohlcv[i][3]
+        h0,l0 = ohlcv[i-1][2], ohlcv[i-1][3]
+        up = h1 - h0; dn = l0 - l1
+        plus_dm.append(up if (up>dn and up>0) else 0.0)
+        minus_dm.append(dn if (dn>up and dn>0) else 0.0)
+        trs.append(tr(h1,l1,ohlcv[i-1][4]))
+    n=14
+    def smma(vals):
+        s=sum(vals[:n]); prev=s/n; out=[prev]
+        for x in vals[n:]:
+            prev = (prev*(n-1)+x)/n
+            out.append(prev)
+        return out[-1]
+    tr_n = smma(trs); plus_n=smma(plus_dm); minus_n=smma(minus_dm)
+    if tr_n==0: return None
+    dip = 100*(plus_n/tr_n); dim = 100*(minus_n/tr_n)
+    if (dip+dim)==0: return None
+    dx = 100*abs(dip-dim)/(dip+dim)
+    return dx  # dùng DX gần nhất như proxy ADX để nhẹ
+def _atr_pct(ohlcv, n=14):
+    if len(ohlcv) < n+2: return 0.0
+    def tr(h,l,pc): 
+        return max(h-l, abs(h-pc), abs(l-pc))
+    trs=[]; pc=ohlcv[-(n+1)][4]
+    for i in range(len(ohlcv)-n, len(ohlcv)):
+        h,l,c = ohlcv[i][2], ohlcv[i][3], ohlcv[i][4]
+        trs.append(tr(h,l,pc)); pc=c
+    atr = sum(trs)/len(trs); close=ohlcv[-1][4] or 0.0
+    return atr/close if close else 0.0
+def _bb_width(closes, n=20, k=2.0):
+    if len(closes)<n: return 0.0
+    w = closes[-n:]
+    ma = sum(w)/n
+    std = (sum((x-ma)**2 for x in w)/n)**0.5
+    upper = ma + k*std; lower = ma - k*std
+    return (upper-lower)/ma if ma else 0.0
+def _pass_liquidity_and_spread(tkr):
+    qv = 0.0
+    if isinstance(tkr.get("info"), dict):
+        try: qv = float(tkr["info"].get("volCcy24h") or 0.0)
+        except: qv = 0.0
+    if qv==0.0:
+        qv = float(tkr.get("quoteVolume") or tkr.get("quoteVolume24h") or 0.0)
+    if qv < UPGRADE["min_quote_volume_24h"]:
+        return False
+    bid=tkr.get("bid"); ask=tkr.get("ask")
+    if bid and ask and bid>0:
+        spr=(ask-bid)/bid
+        if spr>UPGRADE["max_spread"]: return False
+    return True
+def pre_buy_screen_and_sizing(symbol, fallback_usdt):
+    sym_slash = symbol.replace("-", "/")
+    try:
+        tkr = exchange.fetch_ticker(sym_slash)
+    except Exception as e:
+        logger.info(f"⛔ Bỏ {symbol}: không lấy được ticker ({e})")
+        return (False, None, None, None, None, "no_ticker")
+    if not _pass_liquidity_and_spread(tkr):
+        return (False, None, None, None, None, "liquidity")
+    entry = float(tkr.get("last") or 0.0)
+    if entry<=0: 
+        return (False, None, None, None, None, "bad_price")
+    o15 = exchange.fetch_ohlcv(sym_slash, timeframe="15m", limit=120)
+    if len(o15)<40:
+        return (False, None, None, None, None, "no_ohlcv")
+    adx_val = _adx14(o15)
+    atrp = _atr_pct(o15)
+    closes15 = [x[4] for x in o15]
+    bbw = _bb_width(closes15)
+    # percentile volume
+    vols = [x[5] for x in o15][-50:]
+    vthr = _percentile(vols, UPGRADE["vol_pctile"]) or 0.0
+    vol_ok = len(vols)>=10 and vols[-1] >= max(vthr, sum(vols)/len(vols))
+    # BTC filter
+    btc15 = exchange.fetch_ohlcv("BTC/USDT", timeframe="15m", limit=80)
+    btc_ok = True
+    if len(btc15)>=3:
+        nowp = btc15[-1][4]; past = btc15[-3][4]
+        btc_ok = ((nowp - past)/past) > -UPGRADE["btc_drop_block"]
+    choppy_ok = (adx_val is not None and adx_val>=UPGRADE["min_adx"] and atrp>=UPGRADE["min_atr_pct"])
+    # BB width percentile approx via recent widths (proxy p25)
+    # We use last 90 widths from closes15 if available
+    widths=[]
+    for i in range(20, len(closes15)):
+        widths.append(_bb_width(closes15[:i]))
+    p25 = _percentile(widths, UPGRADE["min_bbwidth_pctile"]) or 0.0
+    bbw_ok = (bbw >= p25)
+    if not (choppy_ok and bbw_ok and vol_ok and btc_ok):
+        return (False, None, None, None, None, "filters")
+    # Stop = min swing low last 10 bars OR ATR*1.8 below entry
+    lowN = min(x[3] for x in o15[-10:])
+    # approximate ATR value from atr% and entry
+    stop_atr = entry - 1.8*(atrp*entry)
+    stop = max(lowN, stop_atr)
+    if stop>=entry:
+        return (False, None, None, None, None, "rr_invalid")
+    tp = entry + UPGRADE["min_rr"]*(entry - stop)
+    # sizing by risk
+    bal = exchange.fetch_balance()
+    free_usdt = float(bal.get("USDT", {}).get("free", 0.0))
+    risk_usdt = free_usdt * UPGRADE["risk_per_trade"]
+    loss_per_unit = entry - stop
+    amt = risk_usdt / loss_per_unit if loss_per_unit>0 else 0.0
+    if amt*entry < 5:  # min notional
+        amt = fallback_usdt / entry
+    return (True, float(amt), float(entry), float(stop), float(tp), "ok")
+logger = logging.getLogger("AUTO_SELL")
 logger = logging.getLogger("AUTO_SELL")
 logger.setLevel(logging.DEBUG)  # Luôn bật DEBUG/INFO
 
@@ -110,7 +251,7 @@ def auto_sell_once():
                 and coin.endswith("/USDT")       # Chỉ lấy coin/USDT
                 and coin in tickers              # Có giá hiện tại
                 and float(tickers[coin]['last']) * float(data.get("total", 0)) > 1  # Giá trị > 1 USDT
-                and amount >= 1
+                
             )
         }
         
@@ -178,7 +319,31 @@ def auto_sell_once():
                     continue
         
                 # ✅ Tính phần trăm lời
-                percent_gain = ((current_price - entry_price) / entry_price) * 100
+                
+                # ✅ Ưu tiên TP/SL nếu có trong JSON
+                stop_in = entry_data.get("stop")
+                tp_in = entry_data.get("tp")
+                if isinstance(tp_in, (int,float)) and current_price >= tp_in:
+                    logger.info(f"🎯 TP hit {symbol}: entry={entry_price} tp={tp_in} last={current_price}")
+                    try:
+                        exchange.create_market_sell_order(symbol, balance)
+                        logger.info(f"✅ Đã bán TP {symbol} số lượng {balance}")
+                        updated_prices.pop(symbol, None)
+                        was_updated = True
+                    except Exception as e:
+                        logger.error(f"❌ Lỗi bán TP {symbol}: {e}")
+                    continue
+                if isinstance(stop_in, (int,float)) and current_price <= stop_in:
+                    logger.info(f"🛑 SL hit {symbol}: entry={entry_price} sl={stop_in} last={current_price}")
+                    try:
+                        exchange.create_market_sell_order(symbol, balance)
+                        logger.info(f"✅ Đã bán SL {symbol} số lượng {balance}")
+                        updated_prices.pop(symbol, None)
+                        was_updated = True
+                    except Exception as e:
+                        logger.error(f"❌ Lỗi bán SL {symbol}: {e}")
+                    continue
+percent_gain = ((current_price - entry_price) / entry_price) * 100
         
                 if percent_gain >= 20:
                     logger.info(f"✅ CHỐT LỜI: {symbol} tăng {percent_gain:.2f}% từ {entry_price} => {current_price}")
@@ -332,7 +497,21 @@ def run_bot():
                         logger.info(f"⛔ {symbol} bị loại do FOMO trong trend TĂNG (RSI={rsi:.1f}, Δgiá 3h={price_change:.1f}%)")
                         continue
                     logger.info(f"💰 [TĂNG] Mua {amount} {symbol} với {usdt_amount} USDT (giá {price})")
-                    order = exchange.create_market_buy_order(symbol, amount)
+                    # === Nâng cấp pre-check + sizing + TP/SL ===
+                    _sym_slash = symbol.replace("-", "/")
+                    _passed, _amt2, _entry2, _stop2, _tp2, _reason = pre_buy_screen_and_sizing(symbol, usdt_amount)
+                    if not _passed:
+                        logger.info(f"⛔ Bỏ {_sym_slash} lý do: {_reason}")
+                        continue
+                    amount = _amt2
+                    order = exchange.create_market_buy_order(_sym_slash, amount)
+                    logger.info(f"✅ BUY {_sym_slash}: amount={amount} ~ {amount*_entry2:.2f} USDT @~{_entry2}")
+                    try:
+                        _data = load_entry_prices()
+                        _data[symbol.upper().replace("/", "-")] = {"price": _entry2, "stop": _stop2 if UPGRADE["use_stop_for_spot"] else None, "tp": _tp2, "timestamp": _now_iso()}
+                        save_entry_prices(_data)
+                    except Exception as e:
+                        logger.error(f"❌ Lỗi cập nhật JSON sau BUY: {e}")
                     logger.info(f"✅ Đã mua {symbol} theo TĂNG: {order}")
                     
                     # Giả sử sau khi vào lệnh mua thành công:
@@ -401,7 +580,21 @@ def run_bot():
                     price = exchange.fetch_ticker(symbol)['last']
                     amount = round(usdt_amount / price, 6)
                     logger.info(f"💰 [SIDEWAY] Mua {amount} {symbol} với {usdt_amount} USDT (giá {price})")
-                    order = exchange.create_market_buy_order(symbol, amount)
+                    # === Nâng cấp pre-check + sizing + TP/SL ===
+                    _sym_slash = symbol.replace("-", "/")
+                    _passed, _amt2, _entry2, _stop2, _tp2, _reason = pre_buy_screen_and_sizing(symbol, usdt_amount)
+                    if not _passed:
+                        logger.info(f"⛔ Bỏ {_sym_slash} lý do: {_reason}")
+                        continue
+                    amount = _amt2
+                    order = exchange.create_market_buy_order(_sym_slash, amount)
+                    logger.info(f"✅ BUY {_sym_slash}: amount={amount} ~ {amount*_entry2:.2f} USDT @~{_entry2}")
+                    try:
+                        _data = load_entry_prices()
+                        _data[symbol.upper().replace("/", "-")] = {"price": _entry2, "stop": _stop2 if UPGRADE["use_stop_for_spot"] else None, "tp": _tp2, "timestamp": _now_iso()}
+                        save_entry_prices(_data)
+                    except Exception as e:
+                        logger.error(f"❌ Lỗi cập nhật JSON sau BUY: {e}")
                     logger.info(f"✅ Đã mua {symbol} theo SIDEWAY: {order}")
                     # Giả sử sau khi vào lệnh mua thành công:
                     # ✅ Load lại dữ liệu cũ để tránh mất dữ liệu các coin khác
