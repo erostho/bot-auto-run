@@ -306,7 +306,7 @@ def run_bot():
             # ✅ Nếu trend là TĂNG → mua ngay (logic cũ)
             if trend == "TĂNG":
                 try:
-                    usdt_amount = 10
+                    usdt_amount = 20
                     price = float(exchange.fetch_ticker(symbol)['last']) # ép về float
                     amount = round(usdt_amount / price, 6)
                     # === CHỐNG FOMO (dành cho trend TĂNG) ===
@@ -379,7 +379,7 @@ def run_bot():
                         logger.info(f"⛔ {symbol} bị loại (SIDEWAY nhưng không nén đủ mạnh)")
                         continue
                     # ✅ Mua nếu đủ điều kiện SIDEWAY tích luỹ
-                    usdt_amount = 10
+                    usdt_amount = 20
                     price = exchange.fetch_ticker(symbol)['last']
                     amount = round(usdt_amount / price, 6)
                     logger.info(f"💰 [SIDEWAY] Mua {amount} {symbol} với {usdt_amount} USDT (giá {price})")
