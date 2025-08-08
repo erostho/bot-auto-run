@@ -6,7 +6,8 @@ import logging
 import ccxt
 import time
 import json
-
+from pathlib import Path
+import os, json
     
 # Cấu hình logging
 # logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s:%(message)s")
@@ -42,24 +43,41 @@ exchange = ccxt.okx({
 })
 
 spot_entry_prices = {}  # ✅ khai báo biến toàn cục
-spot_entry_prices_path = os.path.join(os.path.dirname(__file__), "spot_entry_prices.json")        
-def load_entry_prices():
-    spot_entry_prices_path = os.path.join(os.path.dirname(__file__), "spot_entry_prices.json") 
+
+SPOT_JSON_PATH = Path(__file__).with_name("spot_entry_prices.json")
+
+def load_entry_prices() -> dict:
     try:
-        if not os.path.exists(spot_entry_prices_path):
-            logger.warning(f"⚠️ File {spot_entry_prices_path} KHÔNG tồn tại! => Trả về dict rỗng.")
+        if not SPOT_JSON_PATH.exists():
+            logger.warning(f"⚠️ File {SPOT_JSON_PATH} KHÔNG tồn tại! => Trả về dict rỗng.")
             return {}
-        with open(spot_entry_prices_path, "r") as f:
+        with SPOT_JSON_PATH.open("r", encoding="utf-8") as f:
             data = json.load(f)
-            if not isinstance(data, dict):
-                logger.warning(f"⚠️ Dữ liệu trong {spot_entry_prices_path} KHÔNG phải dict: {type(data)}")
-                return {}
-            logger.debug(f"📥 Đã load JSON từ file: {json.dumps(data, indent=2)}")  # 👈 Log toàn bộ json
-            return data
-    except Exception as e:
-        logger.error(f"❌ Lỗi khi load {spot_entry_prices_path}: {e}")
+        if not isinstance(data, dict):
+            logger.warning(f"⚠️ Dữ liệu trong {SPOT_JSON_PATH} KHÔNG phải dict: {type(data)}")
+            return {}
+        logger.debug(f"📥 Đã load JSON từ file: {json.dumps(data, indent=2, ensure_ascii=False)}")
+        return data
+    except json.JSONDecodeError as e:
+        logger.error(f"❌ JSON lỗi/đang ghi dở, KHÔNG ghi đè file: {e}")
         return {}
-        
+    except Exception as e:
+        logger.error(f"❌ Lỗi khi load {SPOT_JSON_PATH}: {e}")
+        return {}
+
+def save_entry_prices(prices_dict: dict):
+    tmp = SPOT_JSON_PATH.with_suffix(".json.tmp")
+    try:
+        with tmp.open("w", encoding="utf-8") as f:
+            json.dump(prices_dict, f, indent=2, ensure_ascii=False)
+            f.flush(); os.fsync(f.fileno())
+        os.replace(tmp, SPOT_JSON_PATH)  # atomic write
+        logger.debug(f"💾 Đã ghi {SPOT_JSON_PATH} xong.\n📦 Nội dung:\n{json.dumps(prices_dict, indent=2, ensure_ascii=False)}")
+    except Exception as e:
+        logger.error(f"❌ Lỗi khi lưu {SPOT_JSON_PATH}: {e}")
+        try: tmp.unlink(missing_ok=True)
+        except: pass
+
 def auto_sell_once():
     global spot_entry_prices
     was_updated = False  # ✅ Reset biến mỗi lần duyệt coin
@@ -238,16 +256,6 @@ def compute_rsi(closes, period=14):
     rsi = 100 - (100 / (1 + rs))
     return rsi
 
-def save_entry_prices(prices_dict):
-    try:
-        with open("spot_entry_prices.json", "w") as f:
-            json.dump(prices_dict, f, indent=2)
-            f.flush()  # 🔁 Đảm bảo ghi xong
-            os.fsync(f.fileno())  # 💾 Ghi ra đĩa thật (tránh ghi tạm vào cache)
-        logger.debug("💾 Đã ghi file spot_entry_prices.json xong.")
-        logger.debug(f"📦 Nội dung file: \n{json.dumps(prices_dict, indent=2)}")
-    except Exception as e:
-        logger.error(f"❌ Lỗi khi lưu file spot_entry_prices.json: {e}")
 
 def run_bot():
     global spot_entry_prices
@@ -313,7 +321,6 @@ def run_bot():
                     ohlcv = exchange.fetch_ohlcv(symbol, timeframe="1h", limit=30)
                     closes = [c[4] for c in ohlcv]
                     volumes = [c[5] for c in ohlcv]
-                    
                     rsi = compute_rsi(closes, period=14)
                     vol = volumes[-1]
                     vol_sma20 = sum(volumes[-20:]) / 20
@@ -327,16 +334,27 @@ def run_bot():
                     logger.info(f"💰 [TĂNG] Mua {amount} {symbol} với {usdt_amount} USDT (giá {price})")
                     order = exchange.create_market_buy_order(symbol, amount)
                     logger.info(f"✅ Đã mua {symbol} theo TĂNG: {order}")
+                    
                     # Giả sử sau khi vào lệnh mua thành công:
                     # ✅ Load lại dữ liệu cũ để tránh mất dữ liệu các coin khác
-                    spot_entry_prices.update(load_entry_prices())
-                    spot_entry_prices[symbol] = {
-                        "price": price,
-                        "timestamp": datetime.utcnow().isoformat() + "Z"
+                    # Chuẩn hóa symbol để lưu
+                    symbol_dash = symbol.upper().replace("/", "-")
+                    
+                    # Load file hiện tại để merge, tránh mất các coin khác
+                    current_data = load_entry_prices()
+                    
+                    # Cập nhật hoặc thêm mới coin vừa mua
+                    current_data[symbol_dash] = {
+                        "price": float(price),
+                        "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z"
                     }
-                    save_entry_prices(spot_entry_prices)
-                    logger.debug(f"📦 JSON hiện tại sau khi cập nhật:\n{json.dumps(spot_entry_prices, indent=2)}")
+                    
+                    # Ghi lại file an toàn
+                    save_entry_prices(current_data)
+                    
+                    logger.debug(f"💾 JSON sau khi cập nhật {symbol_dash}:\n{json.dumps(current_data, indent=2, ensure_ascii=False)}")
                     time.sleep(1) # đảm bảo file được ghi hoàn toàn
+
                     # ✅ Gửi thông báo về Telegram sau khi mua và cập nhật JSON
                     try:
                         content = json.dumps({symbol: spot_entry_prices[symbol]}, indent=2)
@@ -387,13 +405,22 @@ def run_bot():
                     logger.info(f"✅ Đã mua {symbol} theo SIDEWAY: {order}")
                     # Giả sử sau khi vào lệnh mua thành công:
                     # ✅ Load lại dữ liệu cũ để tránh mất dữ liệu các coin khác
-                    spot_entry_prices.update(load_entry_prices())
-                    spot_entry_prices[symbol] = {
-                        "price": price,
-                        "timestamp": datetime.utcnow().isoformat() + "Z"
+                    # Chuẩn hóa symbol để lưu
+                    symbol_dash = symbol.upper().replace("/", "-")
+                    
+                    # Load file hiện tại để merge, tránh mất các coin khác
+                    current_data = load_entry_prices()
+                    
+                    # Cập nhật hoặc thêm mới coin vừa mua
+                    current_data[symbol_dash] = {
+                        "price": float(price),
+                        "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z"
                     }
-                    save_entry_prices(spot_entry_prices)
-                    logger.debug(f"📦 JSON hiện tại sau khi cập nhật:\n{json.dumps(spot_entry_prices, indent=2)}")
+                    
+                    # Ghi lại file an toàn
+                    save_entry_prices(current_data)
+                    
+                    logger.debug(f"💾 JSON sau khi cập nhật {symbol_dash}:\n{json.dumps(current_data, indent=2, ensure_ascii=False)}")
                     time.sleep(1) # đảm bảo file được ghi hoàn toàn
                     # ✅ Gửi thông báo về Telegram sau khi mua và cập nhật JSON
                     try:
