@@ -343,7 +343,7 @@ def auto_sell_once():
                     except Exception as e:
                         logger.error(f"❌ Lỗi bán SL {symbol}: {e}")
                     continue
-percent_gain = ((current_price - entry_price) / entry_price) * 100
+                percent_gain = ((current_price - entry_price) / entry_price) * 100
         
                 if percent_gain >= 20:
                     logger.info(f"✅ CHỐT LỜI: {symbol} tăng {percent_gain:.2f}% từ {entry_price} => {current_price}")
