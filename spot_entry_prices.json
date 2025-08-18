@@ -3,9 +3,9 @@
     "price": 0.2148,
     "timestamp": "2025-07-28T04:33:00Z"
   },
-  "ICE-USDT": {
-    "price": 0.00547,
-    "timestamp": "2025-07-28T04:33:00Z"
+  "DOGE-USDT": {
+    "price": 0.24098,
+    "timestamp": "2025-08-10T04:33:00Z"
   },
     "FLR-USDT": {
     "price": 0.02356,
@@ -19,21 +19,21 @@
     "price": 0.04083,
     "timestamp": "2025-08-08T05:33:00Z"
   },
-  "KMNO-USDT": {
-    "price": 0.0606,
-    "timestamp": "2025-07-28T04:33:00Z"
+  "ADA-USDT": {
+    "price": 0.93661,
+    "timestamp": "2025-08-15T04:33:00Z"
   },
-  "ATH-USDT": {
-    "price": 0.0343,
-    "timestamp": "2025-07-28T04:33:00Z"
+  "ALGO-USDT": {
+    "price": 0.26066,
+    "timestamp": "2025-08-15T04:33:00Z"
   },
   "T-USDT": {
     "price": 0.0186,
     "timestamp": "2025-07-28T04:33:00Z"
   },
-  "STX-USDT": {
-    "price": 0.71315,
-    "timestamp": "2025-07-31T04:33:00Z"
+  "TRX-USDT": {
+    "price": 0.36384,
+    "timestamp": "2025-08-16T04:33:00Z"
   },
   "POLYDOGE-USDT": {
     "price": 0.0000000047873,
@@ -48,6 +48,7 @@
     "timestamp": "2025-07-28T04:33:00Z"
   }
 }
+
 
 
 
