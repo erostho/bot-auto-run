@@ -646,8 +646,8 @@ def main():
     hour = now.hour
 
     print(f"🕰️ Bắt đầu lúc {now.isoformat()}")
-    # ✅ Chỉ chạy run_bot nếu phút hiện tại chia hết 30 (ví dụ: 00:00, 00:30, 01:00...)
-    if minute % 30 == 0:
+    # ✅ Chỉ chạy run_bot nếu phút hiện tại chia hết 15 (ví dụ: 00:00, 00:15, 00:30...)
+    if minute % 15 == 0:
         run_bot()
         logger.info("🟢 Bắt đầu chạy auto_sell_once() sau run_bot()")
         auto_sell_once()
