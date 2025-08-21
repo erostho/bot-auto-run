@@ -641,19 +641,22 @@ msg = json.dumps(spot_entry_prices, indent=2)
 send_to_telegram(f"📂 Đã cập nhật giá mới:\n{msg}")       
 
 def main():
-    now = datetime.utcnow()
-    minute = now.minute
-    hour = now.hour
-
-    print(f"🕰️ Bắt đầu lúc {now.isoformat()}")
+    #now = datetime.utcnow()
+    #minute = now.minute
+    #hour = now.hour
+    #print(f"🕰️ Bắt đầu lúc {now.isoformat()}")
     # ✅ Chỉ chạy run_bot nếu phút hiện tại chia hết 15 (ví dụ: 00:00, 00:15, 00:30...)
-    if minute % 15 == 0:
-        run_bot()
-        logger.info("🟢 Bắt đầu chạy auto_sell_once() sau run_bot()")
-        auto_sell_once()
-    else:
-        print(f"⌛ Chưa đến thời điểm chạy run_bot(), phút hiện tại = {minute}")
-        logger.info("🟢 Bắt đầu chạy auto_sell_once() khi KHÔNG có run_bot()")
-        auto_sell_once()   
+    #if minute % 15 == 0:
+        #run_bot()
+        #logger.info("🟢 Bắt đầu chạy auto_sell_once() sau run_bot()")
+        #auto_sell_once()
+    #else:
+        #print(f"⌛ Chưa đến thời điểm chạy run_bot(), phút hiện tại = {minute}")
+        #logger.info("🟢 Bắt đầu chạy auto_sell_once() khi KHÔNG có run_bot()")
+        #auto_sell_once()   
+    print(f"🟢 Bắt đầu bot lúc {datetime.utcnow().isoformat()}")
+    # Cron đã quyết định lịch, chỉ cần chạy luôn
+    run_bot()
+    auto_sell_once()
 if __name__ == "__main__":
     main()
