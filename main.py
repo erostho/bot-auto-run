@@ -456,7 +456,7 @@ def run_bot():
                     time_str = row[3].strip()
                     signal_time = datetime.strptime(time_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone(timedelta(hours=7)))
                     now_vn = datetime.now(timezone(timedelta(hours=7)))
-                    elapsed = (now_vn - signal_time).total_seconds() / 120
+                    elapsed = (now_vn - signal_time).total_seconds() / 60
                     if elapsed > freq_minutes:
                         logger.info(f"⏱ Bỏ qua {symbol} vì đã quá hạn {freq_minutes} phút (đã qua {int(elapsed)} phút)")
                         continue
