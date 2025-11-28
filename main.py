@@ -152,12 +152,11 @@ def pre_buy_screen_and_sizing(symbol, fallback_usdt):
     if amt*entry < 5:  # min notional
         amt = fallback_usdt / entry
     return (True, float(amt), float(entry), float(stop), float(tp), "ok")
-logger = logging.getLogger("AUTO_SELL")
-logger = logging.getLogger("AUTO_SELL")
-logger.setLevel(logging.DEBUG)  # Luôn bật DEBUG/INFO
 
+logger = logging.getLogger("AUTO_SELL")
+logger.setLevel(logging.INFO)  # Luôn bật DEBUG/INFO
 handler = logging.StreamHandler()
-handler.setLevel(logging.DEBUG)
+handler.setLevel(logging.INFO)
 
 formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
 handler.setFormatter(formatter)
