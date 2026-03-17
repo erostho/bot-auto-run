@@ -23,7 +23,7 @@ UPGRADE = {
     "min_bbwidth_pctile": float(os.getenv("MIN_BBWIDTH_PCTILE", 0.25)),
     "vol_pctile": float(os.getenv("VOL_PCTILE", 0.70)),
     "btc_drop_block": float(os.getenv("BTC_DROP_BLOCK", 0.008)),
-    "min_quote_volume_24h": float(os.getenv("MIN_QV_24H", 1_000_000)),
+    "min_quote_volume_24h": float(os.getenv("MIN_QV_24H", 500_000)),
     "max_spread": float(os.getenv("MAX_SPREAD", 0.002)),
     "use_stop_for_spot": os.getenv("USE_STOP_FOR_SPOT", "true").lower() == "true",
 }
