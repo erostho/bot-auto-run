@@ -8,8 +8,8 @@ import time
 import json
 from pathlib import Path
 import os, json
-from dotenv import load_dotenv
-load_dotenv()
+
+
     
 # Cấu hình logging
 # logging.basicConfig(level=logging.DEBUG, format="%(asctime)s - %(levelname)s:%(message)s")
