@@ -344,7 +344,7 @@ def auto_sell_once():
                     continue
                 percent_gain = ((current_price - entry_price) / entry_price) * 100
         
-                if percent_gain >= 20:
+                if percent_gain >= 30:
                     logger.info(f"✅ CHỐT LỜI: {symbol} tăng {percent_gain:.2f}% từ {entry_price} => {current_price}")
                     try:
                         exchange.create_market_sell_order(symbol, balance)
