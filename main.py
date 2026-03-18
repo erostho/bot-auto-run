@@ -9,6 +9,7 @@ import time
 import json
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+
 # ===================== UPGRADE CONFIG & HELPERS =====================
 UPGRADE = {
     "risk_per_trade": float(os.getenv("RISK_PER_TRADE", 0.008)),
@@ -162,19 +163,21 @@ exchange = ccxt.okx({
     "options": {"defaultType": "spot"},
 })
 
+
 def init_storage_sheet():
     scope = [
         "https://spreadsheets.google.com/feeds",
         "https://www.googleapis.com/auth/drive"
     ]
 
-    creds = ServiceAccountCredentials.from_json_keyfile_name(
-        "credentials.json", scope
+    creds_json = json.loads(os.environ["GOOGLE_CREDENTIALS"])
+
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(
+        creds_json, scope
     )
 
     client = gspread.authorize(creds)
 
-    # 🔥 Sheet bạn vừa tạo
     sheet = client.open("spot_entry_storage").sheet1
     return sheet
 
