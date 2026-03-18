@@ -289,8 +289,6 @@ def pre_buy_screen_and_sizing(symbol, fallback_usdt):
     return True, float(amt), float(entry), float(stop), float(tp), "ok"
 
 def _save_bought_coin(symbol: str, entry_price: float, stop_price, tp_price):
-    global spot_entry_prices
-
     key = symbol.upper().replace("/", "-")
 
     try:
@@ -304,25 +302,27 @@ def _save_bought_coin(symbol: str, entry_price: float, stop_price, tp_price):
                     tp_price,
                     _now_iso()
                 ]])
-                break
-        else:
-            storage_sheet.append_row([
-                key,
-                entry_price,
-                stop_price,
-                tp_price,
-                _now_iso()
-            ])
+                return key, {
+                    "price": entry_price,
+                    "stop": stop_price,
+                    "tp": tp_price,
+                    "timestamp": _now_iso()
+                }
 
-        # update RAM
-        spot_entry_prices[key] = {
+        storage_sheet.append_row([
+            key,
+            entry_price,
+            stop_price,
+            tp_price,
+            _now_iso()
+        ])
+
+        return key, {
             "price": entry_price,
             "stop": stop_price,
             "tp": tp_price,
             "timestamp": _now_iso()
         }
-
-        return key, spot_entry_prices[key]
 
     except Exception as e:
         logger.error(f"❌ Lỗi ghi Google Sheet: {e}")
