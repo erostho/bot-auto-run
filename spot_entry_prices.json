@@ -6,6 +6,14 @@
   "PI-USDT": {
     "price": 0.185,
     "timestamp": "2026-03-17T04:23:00Z"
+  },
+  "LINEA-USDT": {
+    "price": 0.0036,
+    "timestamp": "2026-03-18T08:20:00Z"
+  },
+  "ZIL-USDT": {
+    "price": 0.0045,
+    "timestamp": "2026-03-18T08:20:00Z"
   }
 }
 
