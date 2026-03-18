@@ -177,8 +177,8 @@ def init_storage_sheet():
     )
 
     client = gspread.authorize(creds)
+    sheet = client.open_by_key("1AmnD1ekwTZeZrp8kGRCymMDwCySJkec0WdulNX9LyOY").sheet1
 
-    sheet = client.open("spot_entry_storage").sheet1
     return sheet
 
 
