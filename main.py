@@ -7,7 +7,8 @@ import logging
 import ccxt
 import time
 import json
-
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 # ===================== UPGRADE CONFIG & HELPERS =====================
 UPGRADE = {
     "risk_per_trade": float(os.getenv("RISK_PER_TRADE", 0.008)),
@@ -161,44 +162,48 @@ exchange = ccxt.okx({
     "options": {"defaultType": "spot"},
 })
 
-spot_entry_prices = {}
-SPOT_JSON_PATH = Path(__file__).with_name("spot_entry_prices.json")
+def init_storage_sheet():
+    scope = [
+        "https://spreadsheets.google.com/feeds",
+        "https://www.googleapis.com/auth/drive"
+    ]
+
+    creds = ServiceAccountCredentials.from_json_keyfile_name(
+        "credentials.json", scope
+    )
+
+    client = gspread.authorize(creds)
+
+    # 🔥 Sheet bạn vừa tạo
+    sheet = client.open("spot_entry_storage").sheet1
+    return sheet
 
 
-def load_entry_prices() -> dict:
+storage_sheet = init_storage_sheet()
+
+def load_entry_prices():
+    data = {}
     try:
-        if not SPOT_JSON_PATH.exists():
-            logger.warning(f"⚠️ File {SPOT_JSON_PATH} KHÔNG tồn tại! => Trả về dict rỗng.")
-            return {}
-        with SPOT_JSON_PATH.open("r", encoding="utf-8") as f:
-            data = json.load(f)
-        if not isinstance(data, dict):
-            logger.warning(f"⚠️ Dữ liệu trong {SPOT_JSON_PATH} KHÔNG phải dict: {type(data)}")
-            return {}
-        logger.info(f"📂 File `spot_entry_prices.json` hiện tại:\n{json.dumps(data, indent=2, ensure_ascii=False)}")
+        records = storage_sheet.get_all_records()
+
+        for row in records:
+            symbol = row.get("Symbol")
+            price = row.get("Entry Price")
+
+            if symbol and price:
+                data[symbol] = {
+                    "price": float(price),
+                    "stop": row.get("Stop"),
+                    "tp": row.get("TP"),
+                    "timestamp": row.get("Timestamp")
+                }
+
+        logger.info(f"📂 Loaded {len(data)} entries từ Google Sheet")
         return data
-    except json.JSONDecodeError as e:
-        logger.error(f"❌ JSON lỗi/đang ghi dở, KHÔNG ghi đè file: {e}")
-        return {}
-    except Exception as e:
-        logger.error(f"❌ Lỗi khi load {SPOT_JSON_PATH}: {e}")
-        return {}
 
-
-def save_entry_prices(prices_dict: dict):
-    tmp = SPOT_JSON_PATH.with_suffix(".json.tmp")
-    try:
-        with tmp.open("w", encoding="utf-8") as f:
-            json.dump(prices_dict, f, indent=2, ensure_ascii=False)
-            f.flush()
-            os.fsync(f.fileno())
-        os.replace(tmp, SPOT_JSON_PATH)
     except Exception as e:
-        logger.error(f"❌ Lỗi khi lưu {SPOT_JSON_PATH}: {e}")
-        try:
-            tmp.unlink(missing_ok=True)
-        except Exception:
-            pass
+        logger.error(f"❌ Lỗi load Google Sheet: {e}")
+        return {}
 
 
 def send_to_telegram(message):
@@ -280,20 +285,45 @@ def pre_buy_screen_and_sizing(symbol, fallback_usdt):
         amt = fallback_usdt / entry
     return True, float(amt), float(entry), float(stop), float(tp), "ok"
 
-
 def _save_bought_coin(symbol: str, entry_price: float, stop_price, tp_price):
     global spot_entry_prices
+
     key = symbol.upper().replace("/", "-")
-    current_data = load_entry_prices()
-    current_data[key] = {
-        "price": float(entry_price),
-        "stop": float(stop_price) if isinstance(stop_price, (int, float)) else None,
-        "tp": float(tp_price) if isinstance(tp_price, (int, float)) else None,
-        "timestamp": _now_iso(),
-    }
-    save_entry_prices(current_data)
-    spot_entry_prices = current_data.copy()
-    return key, current_data[key]
+
+    try:
+        records = storage_sheet.get_all_records()
+
+        for i, row in enumerate(records):
+            if row.get("Symbol") == key:
+                storage_sheet.update(f"B{i+2}:E{i+2}", [[
+                    entry_price,
+                    stop_price,
+                    tp_price,
+                    _now_iso()
+                ]])
+                break
+        else:
+            storage_sheet.append_row([
+                key,
+                entry_price,
+                stop_price,
+                tp_price,
+                _now_iso()
+            ])
+
+        # update RAM
+        spot_entry_prices[key] = {
+            "price": entry_price,
+            "stop": stop_price,
+            "tp": tp_price,
+            "timestamp": _now_iso()
+        }
+
+        return key, spot_entry_prices[key]
+
+    except Exception as e:
+        logger.error(f"❌ Lỗi ghi Google Sheet: {e}")
+        return key, {}
 
 
 def auto_sell_once():
@@ -361,6 +391,15 @@ def auto_sell_once():
                         exchange.create_market_sell_order(symbol_slash, balance)
                         logger.info(f"✅ Đã bán TP {symbol_dash} số lượng {balance}")
                         updated_prices.pop(symbol_dash, None)
+                        # xoá khỏi sheet
+                        try:
+                            records = storage_sheet.get_all_records()
+                            for i, row in enumerate(records):
+                                if row.get("Symbol") == symbol_dash:
+                                    storage_sheet.delete_rows(i + 2)
+                                    break
+                        except Exception as e:
+                            logger.warning(f"⚠️ Không thể xoá {symbol_dash} khỏi sheet: {e}")
                         was_updated = True
                     except Exception as e:
                         logger.error(f"❌ Lỗi bán TP {symbol_dash}: {e}")
@@ -375,6 +414,15 @@ def auto_sell_once():
                         exchange.create_market_sell_order(symbol_slash, balance)
                         logger.info(f"✅ Đã bán SL {symbol_dash} số lượng {balance}")
                         updated_prices.pop(symbol_dash, None)
+                        # xoá khỏi sheet
+                        try:
+                            records = storage_sheet.get_all_records()
+                            for i, row in enumerate(records):
+                                if row.get("Symbol") == symbol_dash:
+                                    storage_sheet.delete_rows(i + 2)
+                                    break
+                        except Exception as e:
+                            logger.warning(f"⚠️ Không thể xoá {symbol_dash} khỏi sheet: {e}")
                         was_updated = True
                     except Exception as e:
                         logger.error(f"❌ Lỗi bán SL {symbol_dash}: {e}")
@@ -390,6 +438,15 @@ def auto_sell_once():
                         exchange.create_market_sell_order(symbol_slash, balance)
                         logger.info(f"💰 Đã bán {symbol_dash} số lượng {balance} để chốt lời")
                         updated_prices.pop(symbol_dash, None)
+                        # xoá khỏi sheet
+                        try:
+                            records = storage_sheet.get_all_records()
+                            for i, row in enumerate(records):
+                                if row.get("Symbol") == symbol_dash:
+                                    storage_sheet.delete_rows(i + 2)
+                                    break
+                        except Exception as e:
+                            logger.warning(f"⚠️ Không thể xoá {symbol_dash} khỏi sheet: {e}")
                         was_updated = True
                     except Exception as e:
                         logger.error(f"❌ Lỗi khi bán {symbol_dash}: {e}")
